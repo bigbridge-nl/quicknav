@@ -224,8 +224,15 @@
                 its own results to just one of them (see LimiterMatch::$entityType). Every other
                 keyword's provider already emits exactly its implied type, so needs no entry.
             -->
+            <!--
+                "setting"/"settings" are aliases of "settingsfield", not of "config": narrowed to
+                config_field like "settingsfield" itself, so "config" alone stays the one keyword
+                that searches every config-related type together.
+            -->
             <argument name="entityTypeMap" xsi:type="array">
                 <item name="settingsfield" xsi:type="string">config_field</item>
+                <item name="setting" xsi:type="string">config_field</item>
+                <item name="settings" xsi:type="string">config_field</item>
                 <item name="subgroup" xsi:type="string">config_group</item>
                 <item name="subgroups" xsi:type="string">config_group</item>
                 <item name="menu" xsi:type="string">menu_item</item>
@@ -237,6 +244,8 @@
             -->
             <argument name="entityTypeLabels" xsi:type="array">
                 <item name="settingsfield" xsi:type="string">Setting Fields</item>
+                <item name="setting" xsi:type="string">Setting Fields</item>
+                <item name="settings" xsi:type="string">Setting Fields</item>
                 <item name="subgroup" xsi:type="string">Setting Groups</item>
                 <item name="subgroups" xsi:type="string">Setting Groups</item>
                 <item name="menu" xsi:type="string">Menu Items</item>
