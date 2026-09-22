@@ -265,7 +265,7 @@ use Magento\Framework\Escaper;
         })();
     }
 
-    function quickNavWidget(searchUrl, userId, icons, accessibleTypes, pageWideHighlighting)
+    function quickNavWidget(searchUrl, userId, icons, accessibleTypes, pageWideHighlighting, limiterKeywords)
     {
         /**
          * one shared, human-readable label per entity type, folded into the
@@ -383,8 +383,10 @@ use Magento\Framework\Escaper;
             userId: userId,
             icons: icons,
             accessibleTypes: accessibleTypes || [],
+            limiterKeywords: limiterKeywords || {},
+            chipTooltipText: '',
             activeTypeFilters: [],
-            filtersHidden: false,
+            filtersHidden: true,
             pinned: [],
             recents: [],
             usage: [],
@@ -402,10 +404,14 @@ use Magento\Framework\Escaper;
                 this.pinned = this.loadList('pinned');
                 this.recents = this.loadList('recents');
                 this.usage = this.loadList('usage');
+                /**
+                 * Hidden by default: only an explicit '0' (the user previously chose to show
+                 * it) turns this off, so an unset/first-time value stays hidden.
+                 */
                 try {
-                    this.filtersHidden = window.localStorage.getItem(this.storageKey('filters-hidden')) === '1';
+                    this.filtersHidden = window.localStorage.getItem(this.storageKey('filters-hidden')) !== '0';
                 } catch (error) {
-                    this.filtersHidden = false;
+                    this.filtersHidden = true;
                 }
                 this.pageFinderCleanup = window.quickNavPageFinder.register(this.$el, pageWideHighlighting);
                 this.$nextTick(() => this.expandWidgetToFitResults());
@@ -470,6 +476,52 @@ use Magento\Framework\Escaper;
                 return typeIcons[type] || 'link';
             },
 
+            limiterKeywordHint(type)
+            {
+                const keyword = this.limiterKeywords[type];
+                return keyword ? `Type "${keyword}" to search directly` : null;
+            },
+
+            /**
+             * A real DOM element (`$refs.chipTooltip`), not a CSS `::after`: a pseudo-element
+             * can't be measured, so its position couldn't be clamped to the viewport or flipped
+             * to avoid clipping/overlapping the chip row below it — the same overflow problem
+             * already solved for the scope/storefront picker menus, via the same fix shape.
+             */
+            showChipTooltip(triggerEl, type)
+            {
+                const text = this.limiterKeywordHint(type);
+                if (!text) {
+                    return;
+                }
+                this.chipTooltipText = text;
+                this.$nextTick(() => this.positionChipTooltip(triggerEl));
+            },
+
+            hideChipTooltip()
+            {
+                this.chipTooltipText = '';
+            },
+
+            positionChipTooltip(triggerEl)
+            {
+                const tooltip = this.$refs.chipTooltip;
+                if (!tooltip) {
+                    return;
+                }
+                const gap = 8;
+                const trigger = triggerEl.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const fitsBelow = trigger.bottom + gap + tooltipRect.height <= window.innerHeight;
+                const top = fitsBelow ? trigger.bottom + gap : trigger.top - tooltipRect.height - gap;
+                const left = Math.min(
+                    Math.max(trigger.left, gap),
+                    window.innerWidth - tooltipRect.width - gap,
+                );
+                tooltip.style.setProperty('--quicknav-tooltip-top', `${top}px`);
+                tooltip.style.setProperty('--quicknav-tooltip-left', `${left}px`);
+            },
+
             /**
              * "Expand search": re-runs a limiter's remainder text unscoped, across
              * every provider. Uses the remainder alone (not the original "<keyword> <text>"
@@ -523,6 +575,8 @@ use Magento\Framework\Escaper;
                     .then(response => response.ok ? response.json() : Promise.reject(response))
                     .then(data => {
                         this.results = data.results || [];
+                        this.openScopeResultId = null;
+                        this.openStorefrontResultId = null;
                         this.urlPasteAttempted = Boolean(data.urlPasteAttempted);
                         this.urlPasteAccessDenied = Boolean(data.urlPasteAccessDenied);
                         this.limiter = data.limiter || null;
@@ -548,6 +602,8 @@ use Magento\Framework\Escaper;
             resetResults()
             {
                 this.results = [];
+                this.openScopeResultId = null;
+                this.openStorefrontResultId = null;
                 this.urlPasteAttempted = false;
                 this.urlPasteAccessDenied = false;
                 this.limiter = null;
@@ -577,11 +633,20 @@ use Magento\Framework\Escaper;
              * No-ops outside the dashboard (e.g. the 009 global overlay): there, this.$el has no
              * `.grid-stack-item` ancestor, getGridNode() returns null, and there is no tile to
              * auto-grow — the overlay sizes itself via its own dialog/CSS instead.
+             *
+             * On the dashboard, `this.gridItemEl` can exist before GridStack has attached
+             * `gridstackNode`/`.grid` to it yet — a browser restoring a remembered search query
+             * on reload can fire that search (and this call) before GridStack finishes
+             * initializing. Retries a bounded number of frames rather than giving up permanently,
+             * since nothing else re-triggers this once GridStack does become ready.
              */
-            expandWidgetToFitResults()
+            expandWidgetToFitResults(attempt = 0)
             {
                 const node = this.getGridNode();
                 if (!node || !node.grid) {
+                    if (this.gridItemEl && attempt < 30) {
+                        requestAnimationFrame(() => this.expandWidgetToFitResults(attempt + 1));
+                    }
                     return;
                 }
                 const section = this.gridItemEl.querySelector('.grid-stack-item-content');
@@ -619,12 +684,15 @@ use Magento\Framework\Escaper;
                  * An open scope/storefront-view picker (`.quicknav-widget__scope-menu`, shared
                  * by both) is `position: absolute` — that never contributes to its container's
                  * `scrollHeight` no matter how far it visually extends, a fixed browser behavior
-                 * `scrollHeight` alone can't be coaxed into accounting for. Measured directly
-                 * from the open menu's own rendered position instead, whenever one is open.
+                 * `scrollHeight` alone can't be coaxed into accounting for. Measured directly from
+                 * the open menu's own rendered position instead, whenever one is open. A result
+                 * row renders both pickers' `<ul>`s regardless of which (if either) is open, so
+                 * this checks every one rather than trusting the first match to be the visible one.
                  */
-                const openMenu = this.gridItemEl.querySelector('.quicknav-widget__scope-menu');
-                if (openMenu) {
-                    const menuBottom = openMenu.getBoundingClientRect().bottom - section.getBoundingClientRect().top;
+                const openMenus = [...this.gridItemEl.querySelectorAll('.quicknav-widget__scope-menu')]
+                    .filter((menu) => menu.offsetParent !== null);
+                for (const menu of openMenus) {
+                    const menuBottom = menu.getBoundingClientRect().bottom - section.getBoundingClientRect().top;
                     desiredHeight = Math.max(desiredHeight, menuBottom + chromeBelow + 8);
                 }
                 const desiredRows = Math.ceil(desiredHeight / cellHeight);
@@ -810,15 +878,36 @@ use Magento\Framework\Escaper;
             },
 
             /**
+             * Consumed only by `.quicknav-access__dialog`'s CSS (quicknav-access.css). Set via
+             * setProperty rather than an Alpine `:style` object, which cannot be trusted to pass
+             * a literal `--custom-property` key through unmangled.
+             */
+            positionMenuFromTrigger(triggerButton)
+            {
+                const menu = triggerButton.nextElementSibling;
+                if (!menu) {
+                    return;
+                }
+                const rect = triggerButton.getBoundingClientRect();
+                menu.style.setProperty('--quicknav-menu-top', `${rect.bottom + 4}px`);
+                menu.style.setProperty('--quicknav-menu-left', `${rect.right - 180}px`);
+            },
+
+            /**
              * Scope/store-view awareness (005): each result's `scopeChoices` are precomputed,
              * fully-built URLs from the server (SearchResult::scopeChoices), so choosing one is
              * just a navigation — no client-side URL surgery, and the untouched `result.url`
              * (activate()) stays byte-for-byte identical whether or not this picker is ever
              * opened.
              */
-            toggleScopePicker(result)
+            toggleScopePicker(result, event)
             {
-                this.openScopeResultId = this.openScopeResultId === result.id ? null : result.id;
+                const opening = this.openScopeResultId !== result.id;
+                this.openStorefrontResultId = null;
+                this.openScopeResultId = opening ? result.id : null;
+                if (opening && event) {
+                    this.positionMenuFromTrigger(event.currentTarget);
+                }
                 this.deferredExpandWidgetToFitResults();
             },
 
@@ -842,15 +931,19 @@ use Magento\Framework\Escaper;
             },
 
             /**
-             * Storefront view links (014): its own scalar open/close state, independent of
-             * openScopeResultId — the scope picker (005) and this picker are two separate
-             * dropdowns that can each appear on the same result row, and sharing one scalar
-             * between them would mean opening one silently closes the other instead of each
-             * managing its own visibility.
+             * Storefront view links (014): its own scalar open/close state, but opening it
+             * closes the scope picker (005), and vice versa — they're two separate dropdowns
+             * that can each appear on the same result row, and leaving both open at once let
+             * them render stacked on top of each other.
              */
-            toggleStorefrontPicker(result)
+            toggleStorefrontPicker(result, event)
             {
-                this.openStorefrontResultId = this.openStorefrontResultId === result.id ? null : result.id;
+                const opening = this.openStorefrontResultId !== result.id;
+                this.openScopeResultId = null;
+                this.openStorefrontResultId = opening ? result.id : null;
+                if (opening && event) {
+                    this.positionMenuFromTrigger(event.currentTarget);
+                }
                 this.deferredExpandWidgetToFitResults();
             },
 

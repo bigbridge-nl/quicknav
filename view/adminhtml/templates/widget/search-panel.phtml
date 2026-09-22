@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use BigBridge\QuickNav\ViewModel\IconDictionary;
+use BigBridge\QuickNav\ViewModel\LimiterKeywordHints;
 use BigBridge\QuickNav\ViewModel\OpenSearchNotice;
 use BigBridge\QuickNav\ViewModel\QuickNavConfig;
 use Hyva\Theme\Model\ViewModelRegistry;
@@ -37,13 +38,17 @@ $iconDictionary = $viewModels->require(IconDictionary::class);
 $iconsJson = (string) json_encode($iconDictionary->toArray());
 $quickNavConfig = $viewModels->require(QuickNavConfig::class);
 
+/** @var LimiterKeywordHints $limiterKeywordHints */
+$limiterKeywordHints = $viewModels->require(LimiterKeywordHints::class);
+$limiterKeywordsJson = (string) json_encode($limiterKeywordHints->toArray());
+
 /** @var OpenSearchNotice $openSearchNotice */
 $openSearchNotice = $viewModels->require(OpenSearchNotice::class);
 $openSearchSettingsUrl = $openSearchNotice->getSettingsUrl();
 $unbuiltIndexers = $openSearchNotice->getUnbuiltIndexers();
 $indexManagementUrl = $unbuiltIndexers === [] ? '' : $openSearchNotice->getIndexManagementUrl();
 ?>
-<div class="quicknav-widget" x-data="quickNavWidget('<?= $escaper->escapeJs($searchUrl) ?>', <?= (int) $userId ?>, <?= $escaper->escapeHtmlAttr($iconsJson) ?>, <?= $escaper->escapeHtmlAttr($accessibleTypesJson) ?>, <?= $quickNavConfig->isPageHighlightingEnabled() ? 'true' : 'false' ?>)">
+<div class="quicknav-widget" x-data="quickNavWidget('<?= $escaper->escapeJs($searchUrl) ?>', <?= (int) $userId ?>, <?= $escaper->escapeHtmlAttr($iconsJson) ?>, <?= $escaper->escapeHtmlAttr($accessibleTypesJson) ?>, <?= $quickNavConfig->isPageHighlightingEnabled() ? 'true' : 'false' ?>, <?= $escaper->escapeHtmlAttr($limiterKeywordsJson) ?>)">
     <!--
         Permanent, empty extension point. QuickNav has no dependency on what (if anything) uses
         it — external tooling may inject content here at runtime (it's inside this element's own
@@ -102,12 +107,22 @@ $indexManagementUrl = $unbuiltIndexers === [] ? '' : $openSearchNotice->getIndex
                     class="quicknav-widget__filter-chip"
                     :class="{ ['quicknav-widget__filter-chip--' + type]: true, 'quicknav-widget__filter-chip--active': isTypeFilterActive(type) }"
                     :aria-pressed="isTypeFilterActive(type)"
+                    @mouseenter="showChipTooltip($event.currentTarget, type)"
+                    @mouseleave="hideChipTooltip()"
+                    @focus="showChipTooltip($event.currentTarget, type)"
+                    @blur="hideChipTooltip()"
                     @click="toggleTypeFilter(type)">
                 <span class="quicknav-widget__filter-chip-icon" x-html="icons[iconForType(type)] || icons.link"></span>
                 <span x-text="typeLabel(type)"></span>
             </button>
         </template>
     </div>
+    <div class="quicknav-widget__chip-tooltip"
+         x-ref="chipTooltip"
+         x-show="chipTooltipText"
+         x-cloak
+         x-text="chipTooltipText"
+         role="tooltip"></div>
 
     <ul class="quicknav-widget__results" role="listbox" x-ref="resultsList" x-show="query.length > 0" x-cloak>
         <template x-if="limiter">
@@ -237,7 +252,7 @@ $indexManagementUrl = $unbuiltIndexers === [] ? '' : $openSearchNotice->getIndex
                                 class="quicknav-widget__result-action"
                                 title="<?= $escaper->escapeHtmlAttr(__('Choose scope')) ?>"
                                 aria-label="<?= $escaper->escapeHtmlAttr(__('Choose scope')) ?>"
-                                @click.stop="toggleScopePicker(result)">
+                                @click.stop="toggleScopePicker(result, $event)">
                             <?= /** @noEscape */ $icons->globeHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
                         </button>
                         <ul class="quicknav-widget__scope-menu"
@@ -269,7 +284,7 @@ $indexManagementUrl = $unbuiltIndexers === [] ? '' : $openSearchNotice->getIndex
                                 class="quicknav-widget__result-action"
                                 title="<?= $escaper->escapeHtmlAttr(__('View on storefront')) ?>"
                                 aria-label="<?= $escaper->escapeHtmlAttr(__('View on storefront')) ?>"
-                                @click.stop="toggleStorefrontPicker(result)">
+                                @click.stop="toggleStorefrontPicker(result, $event)">
                             <?= /** @noEscape */ $icons->externalLinkHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
                         </button>
                         <ul class="quicknav-widget__scope-menu"

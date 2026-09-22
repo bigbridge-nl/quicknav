@@ -15,5 +15,13 @@ class LimiterMatch
         public readonly string $providerKey,
         public readonly string $label,
         public readonly string $remainder,
+        /**
+         * Set only for a keyword whose provider emits more than one entity type
+         * (config_section's section/group/field/menu_item) — narrows the provider's own results
+         * to just this one, the same post-fetch filter SearchService already applies for the
+         * type-filter chips. Null for every other keyword: the provider's own results are
+         * already exactly the implied type.
+         */
+        public readonly ?string $entityType = null,
     ) {}
 }

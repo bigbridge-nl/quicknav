@@ -168,6 +168,32 @@
     background-color: #f9fafb;
 }
 
+/*
+ * A real element (positioned by showChipTooltip()/positionChipTooltip() in quicknav.phtml), not
+ * the native `title` attribute or a CSS `::after`: `title`'s OS-level delay and plain styling
+ * read as sluggish and out of place next to this widget's own house style (compare
+ * .quicknav-access__hint, which this matches); a pseudo-element can't be measured, so its
+ * position couldn't be clamped to the viewport or flipped to avoid clipping/overlapping the row
+ * below it, the same overflow problem already solved for the scope/storefront picker menus.
+ * `position: fixed` is what makes that clamping meaningful — it escapes every ancestor's own
+ * overflow/scroll clipping (the dashboard tile as much as the Ctrl+K dialog's results list).
+ */
+.quicknav-widget__chip-tooltip {
+    position: fixed;
+    top: var(--quicknav-tooltip-top, -9999px);
+    left: var(--quicknav-tooltip-left, -9999px);
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #1f2937;
+    color: #f9fafb;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    z-index: 30;
+}
+
 .quicknav-widget__filter-chip-icon {
     display: flex;
     align-items: center;

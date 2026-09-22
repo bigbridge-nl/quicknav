@@ -36,6 +36,12 @@ class MenuIndexCompiler
      */
     private const FALLBACK_ACL_RESOURCE = 'Magento_Backend::admin';
 
+    /**
+     * StructureData's own cache key for its adminhtml-scoped merged tree — same
+     * wrong-area-cached-empty risk as Menu\Config below, cleared for the same reason.
+     */
+    private const STRUCTURE_CACHE_ID = Area::AREA_ADMINHTML.'::backend_system_configuration_structure';
+
     public function __construct(
         private readonly StructureData $structureData,
         private readonly MenuConfig $menuConfig,
@@ -62,6 +68,7 @@ class MenuIndexCompiler
         // If that call happens outside adminhtml — a real risk from CLI, indexer or cron — the
         // wrong, often empty, tree is cached and reused, so rebuild from source every time.
         $this->configCache->remove(MenuConfig::CACHE_MENU_OBJECT);
+        $this->configCache->remove(self::STRUCTURE_CACHE_ID);
 
         // system.xml and menu.xml are only merged under adminhtml, and CLI, indexer and cron
         // contexts run with whatever area is already set. setAreaCode() throws once an area is

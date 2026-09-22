@@ -67,6 +67,18 @@
     overflow-y: auto;
 }
 
+/*
+ * `position: absolute` (quicknav.css) is clipped by this real scrolling list. `fixed` escapes
+ * it while staying a `<dialog>` descendant, so it still renders in the dialog's top layer.
+ * top/left come from the trigger's own rect (see positionMenuFromTrigger()).
+ */
+.quicknav-access__dialog .quicknav-widget__scope-menu {
+    position: fixed;
+    top: var(--quicknav-menu-top, calc(100% + 4px));
+    right: auto;
+    left: var(--quicknav-menu-left, 0);
+}
+
 .quicknav-access__hint {
     position: absolute;
     top: calc(100% + 10px);

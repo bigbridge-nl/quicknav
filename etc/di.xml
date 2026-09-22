@@ -174,6 +174,16 @@
                 <item name="credit_memo" xsi:type="string">credit_memo</item>
                 <item name="activity" xsi:type="string">admin_activity_log</item>
                 <item name="activitylog" xsi:type="string">admin_activity_log</item>
+                <!--
+                    config_group/config_field/menu_item have no provider of their own
+                    (SearchService::PROVIDER_KEY_BY_TYPE routes all three through config_section
+                    too) — scoped to config_section here, then narrowed further to just their own
+                    entity type via entityTypeMap below.
+                -->
+                <item name="settingsfield" xsi:type="string">config_section</item>
+                <item name="subgroup" xsi:type="string">config_section</item>
+                <item name="subgroups" xsi:type="string">config_section</item>
+                <item name="menu" xsi:type="string">config_section</item>
             </argument>
             <argument name="providerLabels" xsi:type="array">
                 <item name="config_section" xsi:type="string">Settings</item>
@@ -208,6 +218,28 @@
                 <item name="credit_memo" xsi:type="string">Credit Memos</item>
                 <item name="admin_activity_log" xsi:type="string">Admin Activity</item>
                 <item name="coupon_code" xsi:type="string">Coupon Codes</item>
+            </argument>
+            <!--
+                config_section's provider emits four entity types together; a keyword here narrows
+                its own results to just one of them (see LimiterMatch::$entityType). Every other
+                keyword's provider already emits exactly its implied type, so needs no entry.
+            -->
+            <argument name="entityTypeMap" xsi:type="array">
+                <item name="settingsfield" xsi:type="string">config_field</item>
+                <item name="subgroup" xsi:type="string">config_group</item>
+                <item name="subgroups" xsi:type="string">config_group</item>
+                <item name="menu" xsi:type="string">menu_item</item>
+            </argument>
+            <!--
+                Overrides providerLabels' generic "Settings" for a keyword entityTypeMap narrows
+                further, so the "Showing ... for" banner names the actual scope, not the provider
+                behind it.
+            -->
+            <argument name="entityTypeLabels" xsi:type="array">
+                <item name="settingsfield" xsi:type="string">Setting Fields</item>
+                <item name="subgroup" xsi:type="string">Setting Groups</item>
+                <item name="subgroups" xsi:type="string">Setting Groups</item>
+                <item name="menu" xsi:type="string">Menu Items</item>
             </argument>
         </arguments>
     </type>

@@ -135,10 +135,18 @@ class SearchService
             $limiterMatch = null;
         }
 
+        // A keyword whose provider emits more than one entity type (e.g. "settingsfield") narrows
+        // to just that one, the same way $typeFilter does — $typeFilter itself always wins when
+        // both are present, since a limiter match is nulled out above once one is set.
+        $entityTypeFilter = $typeFilter;
+        if ($entityTypeFilter === [] && $limiterMatch?->entityType !== null) {
+            $entityTypeFilter = [$limiterMatch->entityType];
+        }
+
         $results = [];
         foreach ($providers as $provider) {
             foreach ($provider->search($searchText, $this->perProviderLimit) as $result) {
-                if ($typeFilter !== [] && ! in_array($result->entityType, $typeFilter, true)) {
+                if ($entityTypeFilter !== [] && ! in_array($result->entityType, $entityTypeFilter, true)) {
                     // Provider-key scoping above cannot separate the several entity types a
                     // single provider emits, so filter them apart here.
                     continue;
