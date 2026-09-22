@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <job name="bigbridge_quicknav_reindex_search" instance="BigBridge\QuickNav\Cron\ReindexSearchIndex" method="execute">
+            <schedule>0 3 * * *</schedule>
+        </job>
+        <job name="bigbridge_quicknav_reindex_large_dataset_search" instance="BigBridge\QuickNav\Cron\ReindexLargeDatasetIndexes" method="execute">
+            <schedule>0 4 * * *</schedule>
+        </job>
+    </group>
+</config>

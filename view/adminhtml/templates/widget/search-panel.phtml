@@ -1,0 +1,412 @@
+<?php
+
+declare(strict_types=1);
+
+use BigBridge\QuickNav\ViewModel\IconDictionary;
+use BigBridge\QuickNav\ViewModel\OpenSearchNotice;
+use BigBridge\QuickNav\ViewModel\QuickNavConfig;
+use Hyva\Theme\Model\ViewModelRegistry;
+use Hyva\Theme\ViewModel\LucideIcons;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+
+/**
+ * Rendered by more than one mount point, each supplying its own `search_url`, `user_id` and
+ * `accessible_types` block data. No mount point holds a copy of this markup or of the
+ * `quickNavWidget()` Alpine component driving it.
+ *
+ * @var Template $block
+ * @var Escaper $escaper
+ * @var ViewModelRegistry $viewModels
+ */
+$searchUrl = (string) $block->getData('search_url');
+$userId = (int) $block->getData('user_id');
+/** @var string[] $accessibleTypes entity types the current admin role can access */
+$accessibleTypes = (array) $block->getData('accessible_types');
+$accessibleTypesJson = (string) json_encode(array_values($accessibleTypes));
+
+/** @var LucideIcons $icons */
+$icons = $viewModels->require(LucideIcons::class);
+
+/**
+ * Pinned and most-used tiles render from localStorage with no server round-trip, so the icon SVG
+ * for a stored result's `icon` key has to be resolvable in JS too.
+ */
+/** @var IconDictionary $iconDictionary */
+$iconDictionary = $viewModels->require(IconDictionary::class);
+$iconsJson = (string) json_encode($iconDictionary->toArray());
+$quickNavConfig = $viewModels->require(QuickNavConfig::class);
+
+/** @var OpenSearchNotice $openSearchNotice */
+$openSearchNotice = $viewModels->require(OpenSearchNotice::class);
+$openSearchSettingsUrl = $openSearchNotice->getSettingsUrl();
+$unbuiltIndexers = $openSearchNotice->getUnbuiltIndexers();
+$indexManagementUrl = $unbuiltIndexers === [] ? '' : $openSearchNotice->getIndexManagementUrl();
+?>
+<div class="quicknav-widget" x-data="quickNavWidget('<?= $escaper->escapeJs($searchUrl) ?>', <?= (int) $userId ?>, <?= $escaper->escapeHtmlAttr($iconsJson) ?>, <?= $escaper->escapeHtmlAttr($accessibleTypesJson) ?>, <?= $quickNavConfig->isPageHighlightingEnabled() ? 'true' : 'false' ?>)">
+    <!--
+        Permanent, empty extension point. QuickNav has no dependency on what (if anything) uses
+        it — external tooling may inject content here at runtime (it's inside this element's own
+        `x-data` scope, so injected Alpine directives can reach `resetResults()`, `query`, etc.
+        via `Alpine.$data()`). Empty by default; renders nothing on its own.
+    -->
+    <div class="quicknav-widget__extensions"></div>
+
+    <div class="quicknav-widget__input-row">
+        <?= /** @noEscape */ $icons->searchHtml('quicknav-widget__icon', 18, 18, ['aria-hidden' => 'true']) ?>
+        <input type="text"
+               class="quicknav-widget__input"
+               x-model="query"
+               x-ref="input"
+               @input.debounce.200ms="search"
+               @keydown.down.prevent="highlightNext"
+               @keydown.up.prevent="highlightPrevious"
+               @keydown.enter.prevent="activateHighlighted"
+               @keydown.escape.prevent.stop="handleEscape"
+               autocomplete="off"
+               role="combobox"
+               aria-expanded="results.length > 0"
+               aria-autocomplete="list"
+               aria-label="<?= $escaper->escapeHtmlAttr(__('Search settings, products, categories, store views — or paste a link')) ?>"
+               placeholder="<?= $escaper->escapeHtmlAttr(__('Search settings, products, categories, store views — or paste a link')) ?>">
+        <!--
+            Absolutely positioned within this same row (see .quicknav-widget__filter-toggle),
+            deliberately not a sibling row of its own — toggling the chip row below shouldn't
+            itself grow the widget by a row.
+        -->
+        <button type="button"
+                class="quicknav-widget__filter-toggle"
+                x-show="accessibleTypes.length > 0"
+                x-cloak
+                :class="{ 'quicknav-widget__filter-toggle--active': filtersHidden }"
+                @click="toggleFiltersVisibility()"
+                :aria-pressed="filtersHidden"
+                :title="filtersHidden ? '<?= $escaper->escapeJs(__('Show filter options')) ?>' : '<?= $escaper->escapeJs(__('Hide filter options')) ?>'"
+                :aria-label="filtersHidden ? '<?= $escaper->escapeJs(__('Show filter options')) ?>' : '<?= $escaper->escapeJs(__('Hide filter options')) ?>'">
+            <span x-show="!filtersHidden" x-cloak>
+                <?= /** @noEscape */ $icons->filterHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+            </span>
+            <span x-show="filtersHidden" x-cloak>
+                <?= /** @noEscape */ $icons->eyeOffHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+            </span>
+        </button>
+    </div>
+
+    <!-- type-filter chip row — an ACL-aware, mouse-usable alternative/complement to
+         007's typed keyword limiters. Only chips for types the current admin role can access
+         at least one result of are rendered. Hidden independently of that when the
+         user has toggled it off via .quicknav-widget__filter-toggle above. -->
+    <div class="quicknav-widget__type-filters" x-show="accessibleTypes.length > 0 && !filtersHidden" x-cloak>
+        <template x-for="type in accessibleTypes" :key="type">
+            <button type="button"
+                    class="quicknav-widget__filter-chip"
+                    :class="{ ['quicknav-widget__filter-chip--' + type]: true, 'quicknav-widget__filter-chip--active': isTypeFilterActive(type) }"
+                    :aria-pressed="isTypeFilterActive(type)"
+                    @click="toggleTypeFilter(type)">
+                <span class="quicknav-widget__filter-chip-icon" x-html="icons[iconForType(type)] || icons.link"></span>
+                <span x-text="typeLabel(type)"></span>
+            </button>
+        </template>
+    </div>
+
+    <ul class="quicknav-widget__results" role="listbox" x-ref="resultsList" x-show="query.length > 0" x-cloak>
+        <template x-if="limiter">
+            <li class="quicknav-widget__limiter">
+                <span x-text="'Showing ' + (limiter && limiter.label) + ' for “' + (limiter && limiter.remainder) + '”'"></span>
+                <button type="button" class="quicknav-widget__expand-link" @click="expandSearch">
+                    <?= $escaper->escapeHtml(__('Expand search')) ?>
+                </button>
+            </li>
+        </template>
+        <template x-if="openSearchStatus === 'disabled'">
+            <li class="quicknav-widget__opensearch-warning">
+                <?= $escaper->escapeHtml(__('Results may be slower to appear: OpenSearch narrowing is turned off.')) ?>
+                <?php if ($openSearchSettingsUrl !== '') : ?>
+                    <a class="quicknav-widget__opensearch-warning-link" href="<?= $escaper->escapeUrl($openSearchSettingsUrl) ?>">
+                        <?= $escaper->escapeHtml(__('Turn it on in the OpenSearch settings')) ?>
+                    </a>
+                <?php endif; ?>
+            </li>
+        </template>
+        <template x-if="openSearchStatus === 'unreachable'">
+            <li class="quicknav-widget__opensearch-warning">
+                <?= $escaper->escapeHtml(__('Results may be slower to appear: OpenSearch narrowing is on, but the server did not answer.')) ?>
+                <?php if ($openSearchSettingsUrl !== '') : ?>
+                    <a class="quicknav-widget__opensearch-warning-link" href="<?= $escaper->escapeUrl($openSearchSettingsUrl) ?>">
+                        <?= $escaper->escapeHtml(__('Check the host and port')) ?>
+                    </a>
+                <?php endif; ?>
+            </li>
+        </template>
+        <?php if ($unbuiltIndexers !== []) : ?>
+            <li class="quicknav-widget__opensearch-warning">
+                <?= $escaper->escapeHtml(__(
+                    'OpenSearch indexes need to be built. Please refresh %1.',
+                    implode(', ', $unbuiltIndexers),
+                )) ?>
+                <?php if ($indexManagementUrl !== '') : ?>
+                    <a class="quicknav-widget__opensearch-warning-link" href="<?= $escaper->escapeUrl($indexManagementUrl) ?>">
+                        <?= $escaper->escapeHtml(__('Open Index Management')) ?>
+                    </a>
+                <?php endif; ?>
+            </li>
+        <?php endif; ?>
+        <template x-if="loading">
+            <li class="quicknav-widget__status"><?= $escaper->escapeHtml(__('Searching…')) ?></li>
+        </template>
+        <template x-if="!loading && results.length === 0 && urlPasteAccessDenied">
+            <li class="quicknav-widget__status"><?= $escaper->escapeHtml(__("Found a match, but you don't have permission to view it.")) ?></li>
+        </template>
+        <template x-if="!loading && results.length === 0 && urlPasteAttempted && !urlPasteAccessDenied">
+            <li class="quicknav-widget__status"><?= $escaper->escapeHtml(__("Couldn't find a page matching that link. Try searching by name instead.")) ?></li>
+        </template>
+        <template x-if="!loading && results.length === 0 && !urlPasteAttempted && !urlPasteAccessDenied">
+            <li class="quicknav-widget__status"><?= $escaper->escapeHtml(__('No matches. Try a different word, or paste a link.')) ?></li>
+        </template>
+        <template x-for="(result, index) in results" :key="result.id">
+            <li class="quicknav-widget__result"
+                :class="{ 'quicknav-widget__result--highlighted': index === highlightedIndex }"
+                role="option"
+                tabindex="-1"
+                :aria-selected="index === highlightedIndex"
+                @mouseenter="highlightedIndex = index"
+                @mouseleave="highlightedIndex = -1"
+                @click="activate(result)"
+                @keydown.down.prevent.stop="highlightNext()"
+                @keydown.up.prevent.stop="highlightPrevious()"
+                @keydown.enter.prevent.stop="activate(result)"
+                @keydown.escape.prevent.stop="focusInput()">
+                <span class="quicknav-widget__type-icon"
+                      :class="'quicknav-widget__type-icon--' + result.type"
+                      x-show="!result.imageUrl"
+                      x-cloak
+                      x-html="icons[result.icon] || icons.link"></span>
+                <img class="quicknav-widget__type-image"
+                     :src="result.imageUrl"
+                     x-show="result.imageUrl"
+                     x-cloak
+                     loading="lazy"
+                     width="20"
+                     height="20"
+                     alt="">
+                <span class="quicknav-widget__result-main">
+                    <span class="quicknav-widget__result-label">
+                        <span x-text="result.label"></span>
+                        <span class="quicknav-widget__result-badge"
+                              x-show="result.matchedFromPastedLink"
+                              x-cloak><?= $escaper->escapeHtml(__('Matched from pasted link')) ?></span>
+                        <span class="quicknav-widget__result-count"
+                              x-show="result.productCount !== null"
+                              x-cloak
+                              x-text="'(' + result.productCount + ' ' + (result.productCount === 1 ? '<?= $escaper->escapeJs(__('product')) ?>' : '<?= $escaper->escapeJs(__('products')) ?>') + ')'"></span>
+                    </span>
+                    <span class="quicknav-widget__result-context"
+                          x-text="typeLabel(result.type) + (result.context ? ' · ' + result.context : '')"></span>
+                </span>
+                <span class="quicknav-widget__result-actions">
+                    <button type="button"
+                            class="quicknav-widget__result-action quicknav-widget__pin-toggle"
+                            :class="{ 'quicknav-widget__pin-toggle--pinned': isPinned(result) }"
+                            :title="isPinned(result) ? '<?= $escaper->escapeJs(__('Unpin')) ?>' : '<?= $escaper->escapeJs(__('Pin')) ?>'"
+                            :aria-label="isPinned(result) ? '<?= $escaper->escapeJs(__('Unpin')) ?>' : '<?= $escaper->escapeJs(__('Pin')) ?>'"
+                            @click.stop="togglePin(result)">
+                        <?= /** @noEscape */ $icons->starHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+                    </button>
+                    <button type="button"
+                            class="quicknav-widget__result-action"
+                            x-show="result.secondaryActionUrl"
+                            x-cloak
+                            title="<?= $escaper->escapeHtmlAttr(__('Edit')) ?>"
+                            aria-label="<?= $escaper->escapeHtmlAttr(__('Edit')) ?>"
+                            @click.stop="activate(result)">
+                        <?= /** @noEscape */ $icons->pencilHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+                    </button>
+                    <button type="button"
+                            class="quicknav-widget__result-action"
+                            x-show="result.secondaryActionUrl"
+                            x-cloak
+                            :title="result.secondaryActionLabel"
+                            :aria-label="result.secondaryActionLabel"
+                            @click.stop="activateSecondary(result)">
+                        <?= /** @noEscape */ $icons->layoutGridHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+                    </button>
+                    <span class="quicknav-widget__scope-picker"
+                          x-show="result.scopeChoices && result.scopeChoices.length > 0"
+                          x-cloak>
+                        <button type="button"
+                                class="quicknav-widget__result-action"
+                                title="<?= $escaper->escapeHtmlAttr(__('Choose scope')) ?>"
+                                aria-label="<?= $escaper->escapeHtmlAttr(__('Choose scope')) ?>"
+                                @click.stop="toggleScopePicker(result)">
+                            <?= /** @noEscape */ $icons->globeHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+                        </button>
+                        <ul class="quicknav-widget__scope-menu"
+                            x-show="openScopeResultId === result.id"
+                            x-cloak
+                            @click.outside="closeScopePicker()"
+                            role="menu">
+                            <template x-for="choice in (result.scopeChoices || [])" :key="choice.type + '-' + choice.id">
+                                <li class="quicknav-widget__scope-menu-item"
+                                    :class="'quicknav-widget__scope-menu-item--' + choice.type"
+                                    role="menuitem">
+                                    <button type="button" @click.stop="activateWithScope(choice)" x-text="choice.label"></button>
+                                </li>
+                            </template>
+                        </ul>
+                    </span>
+                    <!-- "View on storefront" — a *viewing* dropdown, deliberately
+                         a distinct icon (external-link, not the scope-picker's globe) and its
+                         own open/close state so a user never confuses "edit in this scope" with
+                         "view on storefront in this scope". Driven generically by
+                         result.storefrontChoices — only product/category/cms_page providers
+                         ever populate it (availability check), so this markup
+                         automatically renders for exactly those types with no per-type template
+                         duplication. -->
+                    <span class="quicknav-widget__storefront-picker"
+                          x-show="result.storefrontChoices && result.storefrontChoices.length > 0"
+                          x-cloak>
+                        <button type="button"
+                                class="quicknav-widget__result-action"
+                                title="<?= $escaper->escapeHtmlAttr(__('View on storefront')) ?>"
+                                aria-label="<?= $escaper->escapeHtmlAttr(__('View on storefront')) ?>"
+                                @click.stop="toggleStorefrontPicker(result)">
+                            <?= /** @noEscape */ $icons->externalLinkHtml('', 16, 16, ['aria-hidden' => 'true']) ?>
+                        </button>
+                        <ul class="quicknav-widget__scope-menu"
+                            x-show="openStorefrontResultId === result.id"
+                            x-cloak
+                            @click.outside="closeStorefrontPicker()"
+                            role="menu">
+                            <template x-for="choice in (result.storefrontChoices || [])" :key="'sf-' + choice.storeId">
+                                <li class="quicknav-widget__scope-menu-item" role="menuitem">
+                                    <button type="button"
+                                            @click.stop="openStorefront(choice); closeStorefrontPicker()"
+                                            x-text="choice.label"></button>
+                                </li>
+                            </template>
+                        </ul>
+                    </span>
+                </span>
+            </li>
+        </template>
+    </ul>
+
+    <!-- a non-blocking fallback when the browser's popup blocker prevents the new tab
+         — never a native alert()/confirm(), matching this widget's existing avoidance of native
+         browser dialogs elsewhere; the resolved URL stays reachable via a real link (itself
+         target="_blank" rel="noopener noreferrer") so a blocked popup is never a dead click. -->
+    <p class="quicknav-widget__popup-blocked" x-show="popupBlockedUrl" x-cloak>
+        <?= $escaper->escapeHtml(__('Your browser blocked the new tab.')) ?>
+        <a :href="popupBlockedUrl" target="_blank" rel="noopener noreferrer" @click="dismissPopupBlockedNotice()">
+            <?= $escaper->escapeHtml(__('Open manually')) ?>
+        </a>
+        <button type="button"
+                class="quicknav-widget__popup-blocked-dismiss"
+                aria-label="<?= $escaper->escapeHtmlAttr(__('Dismiss')) ?>"
+                @click="dismissPopupBlockedNotice()">&times;</button>
+    </p>
+
+    <div class="quicknav-widget__personalization" x-show="query.length === 0" x-cloak>
+        <template x-if="pinned.length > 0">
+            <div class="quicknav-widget__personalization-section">
+                <p class="quicknav-widget__personalization-heading">
+                    <span class="quicknav-widget__personalization-heading-label">
+                        <?= /** @noEscape */ $icons->starHtml('', 14, 14, ['aria-hidden' => 'true']) ?>
+                        <?= $escaper->escapeHtml(__('Pinned')) ?>
+                    </span>
+                    <button type="button"
+                            class="quicknav-widget__personalization-clear"
+                            @click="clearList('pinned')">
+                        <?= $escaper->escapeHtml(__('Clear')) ?>
+                    </button>
+                </p>
+                <div class="quicknav-widget__tile-grid">
+                    <template x-for="item in pinned" :key="'pin-' + item.id">
+                        <div class="quicknav-widget__tile" @click="activatePersonalized(item)" :title="item.label">
+                            <button type="button"
+                                    class="quicknav-widget__tile-unpin"
+                                    title="<?= $escaper->escapeHtmlAttr(__('Unpin')) ?>"
+                                    aria-label="<?= $escaper->escapeHtmlAttr(__('Unpin')) ?>"
+                                    @click.stop="togglePin(item)">
+                                <?= /** @noEscape */ $icons->starHtml('', 12, 12, ['aria-hidden' => 'true']) ?>
+                            </button>
+                            <span class="quicknav-widget__tile-icon" :class="'quicknav-widget__tile-icon--' + item.type">
+                                <img :src="item.imageUrl" x-show="item.imageUrl" x-cloak loading="lazy" width="40" height="40" alt="">
+                                <span x-show="!item.imageUrl" x-cloak x-html="icons[item.icon] || icons.link"></span>
+                            </span>
+                            <span class="quicknav-widget__tile-label" x-text="item.label"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <template x-if="recents.length > 0">
+            <div class="quicknav-widget__personalization-section">
+                <p class="quicknav-widget__personalization-heading">
+                    <span class="quicknav-widget__personalization-heading-label">
+                        <?= /** @noEscape */ $icons->historyHtml('', 14, 14, ['aria-hidden' => 'true']) ?>
+                        <?= $escaper->escapeHtml(__('Recent')) ?>
+                    </span>
+                    <button type="button"
+                            class="quicknav-widget__personalization-clear"
+                            @click="clearList('recents')">
+                        <?= $escaper->escapeHtml(__('Clear')) ?>
+                    </button>
+                </p>
+                <ul class="quicknav-widget__results" role="listbox">
+                    <template x-for="item in recents" :key="'recent-' + item.id">
+                        <li class="quicknav-widget__result" role="option" @click="activatePersonalized(item)">
+                            <span class="quicknav-widget__type-icon"
+                                  :class="'quicknav-widget__type-icon--' + item.type"
+                                  x-show="!item.imageUrl"
+                                  x-cloak
+                                  x-html="icons[item.icon] || icons.link"></span>
+                            <img class="quicknav-widget__type-image"
+                                 :src="item.imageUrl"
+                                 x-show="item.imageUrl"
+                                 x-cloak
+                                 loading="lazy"
+                                 width="20"
+                                 height="20"
+                                 alt="">
+                            <span class="quicknav-widget__result-main">
+                                <span class="quicknav-widget__result-label" x-text="item.label"></span>
+                                <span class="quicknav-widget__result-context"
+                                      x-text="typeLabel(item.type) + (item.context ? ' · ' + item.context : '')"></span>
+                            </span>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+        <template x-if="topUsage().length > 0">
+            <div class="quicknav-widget__personalization-section">
+                <p class="quicknav-widget__personalization-heading">
+                    <span class="quicknav-widget__personalization-heading-label">
+                        <?= /** @noEscape */ $icons->layoutGridHtml('', 14, 14, ['aria-hidden' => 'true']) ?>
+                        <?= $escaper->escapeHtml(__('Most Used')) ?>
+                    </span>
+                    <button type="button"
+                            class="quicknav-widget__personalization-clear"
+                            @click="clearList('usage')">
+                        <?= $escaper->escapeHtml(__('Clear')) ?>
+                    </button>
+                </p>
+                <div class="quicknav-widget__tile-grid">
+                    <template x-for="item in topUsage()" :key="'usage-' + item.id">
+                        <div class="quicknav-widget__tile" @click="activatePersonalized(item)" :title="item.label">
+                            <span class="quicknav-widget__tile-icon" :class="'quicknav-widget__tile-icon--' + item.type">
+                                <img :src="item.imageUrl" x-show="item.imageUrl" x-cloak loading="lazy" width="40" height="40" alt="">
+                                <span x-show="!item.imageUrl" x-cloak x-html="icons[item.icon] || icons.link"></span>
+                            </span>
+                            <span class="quicknav-widget__tile-label" x-text="item.label"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <p class="quicknav-widget__hint" x-show="pinned.length === 0 && topUsage().length === 0 && recents.length === 0">
+            <?= $escaper->escapeHtml(__('Search settings, products, categories, store views — or paste a link.')) ?>
+        </p>
+    </div>
+</div>

@@ -1,0 +1,128 @@
+<?php
+
+declare(strict_types=1);
+
+use Hyva\Theme\ViewModel\HyvaCsp;
+use Magento\Backend\Block\Template;
+
+/** @var Template $block */
+/** @var HyvaCsp $hyvaCsp */
+?>
+<script>
+    /**
+     * Global overlay (009): owns only open/close state, focus restoration, and the global
+     * Ctrl+K/Cmd+K listener. The actual search/results/personalization behavior inside the
+     * dialog is the shared `quickNavWidget()` component (BigBridge_QuickNav) — this component
+     * never touches search logic, it only opens and closes the dialog around it.
+     *
+     * `showLoginHint` (server-rendered, true exactly once per login — see
+     * AccessTrigger::shouldShowLoginHint()) seeds a one-shot discovery popdown teaching the shortcut.
+     */
+    function quickNavAccess(showLoginHint)
+    {
+        return {
+            previouslyFocused: null,
+            hintVisible: !!showLoginHint,
+            hintAutoHideTimer: null,
+            isMac: /Mac|iPod|iPhone|iPad/.test(window.navigator.platform || window.navigator.userAgent || ''),
+
+            init()
+            {
+                window.addEventListener('keydown', (event) => {
+                    const key = (event.key || '').toLowerCase();
+                    if ((event.ctrlKey || event.metaKey) && key === 'k') {
+                        event.preventDefault();
+                        this.open();
+                    }
+                });
+
+                if (this.hintVisible) {
+                    // Auto-dismiss so it never lingers as stale chrome on a long-lived tab.
+                    this.hintAutoHideTimer = window.setTimeout(() => this.dismissHint(), 10000);
+                }
+            },
+
+            get shortcutLabel()
+            {
+                return this.isMac ? '⌘K' : 'Ctrl+K';
+            },
+
+            dismissHint()
+            {
+                this.hintVisible = false;
+                if (this.hintAutoHideTimer) {
+                    window.clearTimeout(this.hintAutoHideTimer);
+                    this.hintAutoHideTimer = null;
+                }
+            },
+
+            open()
+            {
+                this.dismissHint();
+                if (this.$refs.dialog.hasAttribute('open')) {
+                    return;
+                }
+                this.previouslyFocused = document.activeElement;
+                // the dialog is only ever hidden/shown, never torn down, so the shared
+                // quickNavWidget() instance inside it would otherwise carry an active type filter
+                // over from whatever search the user last left it on. Query text is deliberately
+                // left alone here — only the filter selection is required not to persist.
+                const widgetEl = this.$refs.dialog.querySelector('.quicknav-widget');
+                if (widgetEl) {
+                    Alpine.$data(widgetEl).activeTypeFilters = [];
+                }
+                this.$refs.dialog.showModal();
+                this.$nextTick(() => {
+                    this.$refs.dialog.querySelector('.quicknav-widget__input')?.focus();
+                });
+            },
+
+            handleDialogEscape()
+            {
+                const widgetEl = this.$refs.dialog.querySelector('.quicknav-widget');
+                const widget = widgetEl && window.Alpine?.$data(widgetEl);
+                // Keyboard nav moves real focus onto a result row (BigBridge_QuickNav's
+                // highlightNext()/highlightPrevious()) — this dialog's own Escape listener runs
+                // in the CAPTURE phase specifically so it beats native <dialog> cancel handling,
+                // which means it always intercepts Escape before a row's own bubble-phase
+                // handler ever sees it. Widget-internal "just return focus to the search bar"
+                // has to be handled here too, first, rather than relying on that row handler.
+                if (document.activeElement?.closest?.('.quicknav-widget__result') && widget) {
+                    widget.focusInput();
+                    return;
+                }
+                if (widget?.query?.length > 0) {
+                    widget.clear();
+                    return;
+                }
+
+                if (window.quickNavPageFinder?.isActive()) {
+                    window.quickNavPageFinder.clear();
+                    return;
+                }
+
+                this.close();
+            },
+
+            /**
+             * Also the expression the x-htmldialog directive evaluates on Escape, a native
+             * `cancel` event, or a click outside the dialog's own box (closeby.any) — so this
+             * single method is both the manual close handler and the automatic one.
+             */
+            close()
+            {
+                if (!this.$refs.dialog.hasAttribute('open')) {
+                    return;
+                }
+                this.$refs.dialog.close();
+                if (this.previouslyFocused && typeof this.previouslyFocused.focus === 'function') {
+                    this.previouslyFocused.focus();
+                }
+                this.previouslyFocused = null;
+            },
+        };
+    }
+
+    window.addEventListener('alpine:init', () => Alpine.data('quickNavAccess', quickNavAccess), {once: true});
+</script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>

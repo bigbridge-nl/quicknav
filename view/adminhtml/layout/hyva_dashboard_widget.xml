@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <head>
+        <css src="BigBridge_QuickNav::css/quicknav.css"/>
+    </head>
+    <body>
+        <referenceBlock name="widget-container.after">
+            <block name="widget-type.quicknav.js" template="BigBridge_QuickNav::js/widget/quicknav.phtml"/>
+        </referenceBlock>
+    </body>
+</page>

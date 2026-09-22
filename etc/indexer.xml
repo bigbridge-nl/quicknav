@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Indexer/etc/indexer.xsd">
+    <indexer id="bigbridge_quicknav_search"
+             view_id="bigbridge_quicknav_search_dummy"
+             class="BigBridge\QuickNav\Model\Indexer\SearchIndexer">
+        <title translate="true">BigBridge QuickNav Search Index</title>
+        <description translate="true">
+            Compiles the QuickNav admin search index (system.xml/menu.xml navigation entries,
+            and in future products/categories) so search results are served from a flat table
+            instead of parsing configuration on every request.
+        </description>
+    </indexer>
+    <indexer id="bigbridge_quicknav_product_search" view_id="bigbridge_quicknav_product_search"
+             class="BigBridge\QuickNav\Model\Indexer\ProductLargeDatasetIndexer">
+        <title translate="true">QuickNav Product Search Index (OpenSearch)</title>
+        <description translate="true">Narrows QuickNav product search to candidate IDs via OpenSearch n-gram matching. Falls back to the unmodified full scan when unavailable.</description>
+    </indexer>
+    <indexer id="bigbridge_quicknav_customer_search" view_id="bigbridge_quicknav_customer_search"
+             class="BigBridge\QuickNav\Model\Indexer\CustomerLargeDatasetIndexer">
+        <title translate="true">QuickNav Customer Search Index (OpenSearch)</title>
+        <description translate="true">Narrows QuickNav customer search to candidate IDs via OpenSearch n-gram matching. Falls back to the unmodified full scan when unavailable.</description>
+    </indexer>
+    <indexer id="bigbridge_quicknav_order_search" view_id="bigbridge_quicknav_order_search"
+             class="BigBridge\QuickNav\Model\Indexer\OrderLargeDatasetIndexer">
+        <title translate="true">QuickNav Order Search Index (OpenSearch)</title>
+        <description translate="true">Narrows QuickNav order search to candidate IDs via OpenSearch n-gram matching. Falls back to the unmodified full scan when unavailable.</description>
+    </indexer>
+    <indexer id="bigbridge_quicknav_coupon_search" view_id="bigbridge_quicknav_coupon_search"
+             class="BigBridge\QuickNav\Model\Indexer\CouponCodeLargeDatasetIndexer">
+        <title translate="true">QuickNav Coupon Code Search Index (OpenSearch)</title>
+        <description translate="true">Narrows QuickNav coupon code search to candidate IDs via OpenSearch n-gram matching. Falls back to the unmodified full scan when unavailable.</description>
+    </indexer>
+</config>

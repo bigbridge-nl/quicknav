@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Mview/etc/mview.xsd">
+    <!--
+        Dummy view (same pattern Magento_Theme uses for design_config_grid): indexer.xml
+        requires a view_id, but there is no changelog source to subscribe to yet since this
+        indexer only compiles static system.xml/menu.xml declarations. When product/category
+        entities are added here (see Model/Indexer/SearchIndexer docblock), replace this with
+        a real view that subscribes to catalog_product_entity / catalog_category_entity.
+    -->
+    <view id="bigbridge_quicknav_search_dummy" class="Magento\Framework\Indexer\Action\Dummy" group="indexer"/>
+    <view id="bigbridge_quicknav_product_search" class="BigBridge\QuickNav\Model\Indexer\ProductLargeDatasetIndexer" group="indexer">
+        <subscriptions>
+            <table name="catalog_product_entity" entity_column="entity_id"/>
+            <table name="catalog_product_entity_varchar" entity_column="entity_id"/>
+        </subscriptions>
+    </view>
+    <!--
+        Deliberately subscribes to customer_entity (the real, permanent customer entity table),
+        NOT customer_grid_flat, even though CustomerDocumentCompiler reads customer_grid_flat
+        for the actual name/email values. customer_grid_flat is itself the disposable OUTPUT of
+        Magento's own customer_grid indexer (Magento\Framework\Indexer\SaveHandler\Grid +
+        GridStructure) — every full customer_grid reindex does a real DROP TABLE + CREATE TABLE
+        on it (confirmed in GridStructure::delete()/create()), which silently destroys any
+        trigger attached to it with no exception or log entry. Subscribing downstream of that
+        table meant our own incremental updates could go silently dead until manually
+        resubscribed. customer_entity is never dropped/recreated this way (verified: only static
+        customer columns like firstname/lastname/email live there directly — Magento's own
+        customer_dummy view in Magento_Customer's own mview.xml subscribes to this same table,
+        among others, for exactly this reason). name/firstname/lastname/email are native static
+        columns on customer_entity (not EAV varchar attributes), so this one table is sufficient
+        for change detection even though core's own equivalent view also covers
+        customer_entity_datetime/decimal/int and customer_address_entity for its OWN (broader)
+        grid fields that we don't index.
+    -->
+    <view id="bigbridge_quicknav_customer_search" class="BigBridge\QuickNav\Model\Indexer\CustomerLargeDatasetIndexer" group="indexer">
+        <subscriptions>
+            <table name="customer_entity" entity_column="entity_id"/>
+        </subscriptions>
+    </view>
+    <view id="bigbridge_quicknav_order_search" class="BigBridge\QuickNav\Model\Indexer\OrderLargeDatasetIndexer" group="indexer">
+        <subscriptions>
+            <table name="sales_order_grid" entity_column="entity_id"/>
+        </subscriptions>
+    </view>
+    <view id="bigbridge_quicknav_coupon_search" class="BigBridge\QuickNav\Model\Indexer\CouponCodeLargeDatasetIndexer" group="indexer">
+        <subscriptions>
+            <table name="salesrule_coupon" entity_column="coupon_id"/>
+        </subscriptions>
+    </view>
+</config>

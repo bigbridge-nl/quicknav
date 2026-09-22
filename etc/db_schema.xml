@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <table name="bigbridge_quicknav_menu_index" resource="default" engine="innodb"
+           comment="BigBridge QuickNav - compiled system.xml/menu.xml navigation index">
+        <column xsi:type="int" name="entity_id" unsigned="true" nullable="false" identity="true" comment="Entity ID"/>
+        <column xsi:type="varchar" name="record_type" nullable="false" length="32" comment="config_section|config_group|config_field|menu_item"/>
+        <column xsi:type="varchar" name="label" nullable="false" length="255" comment="Display label"/>
+        <column xsi:type="varchar" name="search_label" nullable="false" length="255" comment="Lowercased label for matching"/>
+        <column xsi:type="varchar" name="breadcrumb" nullable="true" length="500" comment="Human readable path, e.g. Stores &gt; Configuration &gt; Tax"/>
+        <column xsi:type="varchar" name="admin_path" nullable="false" length="500" comment="Admin route/path used to build the edit URL"/>
+        <column xsi:type="varchar" name="acl_resource" nullable="true" length="255" comment="ACL resource id required to view this entry"/>
+        <column xsi:type="varchar" name="section_id" nullable="true" length="255" comment="system.xml section id, where applicable"/>
+        <column xsi:type="varchar" name="group_id" nullable="true" length="255" comment="system.xml group id, where applicable"/>
+        <column xsi:type="varchar" name="scopable" nullable="false" length="16" default="default" comment="default|website|store - scope picker classification (feature 005)"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="entity_id"/>
+        </constraint>
+        <index referenceId="BIGBRIDGE_QUICKNAV_MENU_INDEX_SEARCH_LABEL" indexType="btree">
+            <column name="search_label"/>
+        </index>
+        <index referenceId="BIGBRIDGE_QUICKNAV_MENU_INDEX_RECORD_TYPE" indexType="btree">
+            <column name="record_type"/>
+        </index>
+    </table>
+</schema>

@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <!--
+            Declared identically to BigBridge_Core's own tab, id included. Magento merges
+            same-id tabs, so with Core installed this contributes nothing and the section lands
+            in Core's existing tab; standalone, this declaration is what creates it. Any change
+            here has to stay byte-identical to Core's, or the two stop merging.
+        -->
+        <tab id="bigbridge_tab" translate="label" sortOrder="1500" class="bigbridge-tab">
+            <label>BigBridge</label>
+        </tab>
+        <section id="quicknav_search" translate="label" type="text" sortOrder="10"
+                 showInDefault="1" showInWebsite="0" showInStore="0">
+            <label>QuickNav Search Index</label>
+            <tab>bigbridge_tab</tab>
+            <resource>BigBridge_QuickNav::config_quicknav_search</resource>
+            <group id="general" translate="label" type="text" sortOrder="5"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>General</label>
+                <field id="page_highlighting" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Highlight page items while typing</label>
+                    <comment>When enabled, typing while the page has focus highlights matching visible items across the entire admin page. When disabled, highlighting is limited to visible QuickNav content. This is the account-wide default; an individual admin can override it for themselves on their own Account Information page.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+            <group id="opensearch" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>OpenSearch Candidate Narrowing</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1">
+                    <label>Enable OpenSearch Narrowing</label>
+                    <comment>Narrows product/customer/order/coupon code search to candidate IDs via a QuickNav-owned OpenSearch index before the existing database scan. Falls back to the unmodified full scan whenever disabled or unreachable — never a hard dependency.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="connection_source" translate="label comment" type="select" sortOrder="15" showInDefault="1">
+                    <label>Connection</label>
+                    <comment>"Use Magento's configured OpenSearch/Elasticsearch" reads the host and port from Catalog Search &gt; OpenSearch and hides the fields below; QuickNav still writes to its own index, named by the prefix.</comment>
+                    <source_model>BigBridge\QuickNav\Model\Config\Source\OpenSearchConnectionSource</source_model>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+                <field id="host" translate="label" type="text" sortOrder="20" showInDefault="1">
+                    <label>Host</label>
+                    <comment>Default: 127.0.0.1</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="connection_source">custom</field>
+                    </depends>
+                </field>
+                <field id="port" translate="label" type="text" sortOrder="30" showInDefault="1">
+                    <label>Port</label>
+                    <comment>Default: 9200</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="connection_source">custom</field>
+                    </depends>
+                </field>
+                <field id="scheme" translate="label" type="select" sortOrder="40" showInDefault="1">
+                    <label>Scheme</label>
+                    <source_model>BigBridge\QuickNav\Model\Config\Source\HttpScheme</source_model>
+                    <depends>
+                        <field id="enabled">1</field>
+                        <field id="connection_source">custom</field>
+                    </depends>
+                </field>
+                <field id="index_prefix" translate="label comment" type="text" sortOrder="50" showInDefault="1">
+                    <label>Index Name Prefix</label>
+                    <comment>Default: bigbridge_quicknav</comment>
+                    <depends><field id="enabled">1</field></depends>
+                </field>
+            </group>
+        </section>
+        <section id="quicknav_access" translate="label" type="text" sortOrder="500"
+                 showInDefault="1" showInWebsite="0" showInStore="0">
+            <label>Quick Access QuickNav</label>
+            <tab>advanced</tab>
+            <resource>BigBridge_QuickNav::config_quicknav_access</resource>
+            <group id="general" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Enable Quick Access QuickNav</label>
+                    <comment>Shows the magnifying-glass icon next to the admin search and enables the global Ctrl+K / Cmd+K shortcut, on every admin page. Disabling this only hides the global overlay and shortcut — the QuickNav dashboard widget is unaffected.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

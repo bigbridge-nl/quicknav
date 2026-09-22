@@ -1,0 +1,1050 @@
+<?php
+
+declare(strict_types=1);
+
+use Hyva\Theme\ViewModel\HyvaCsp;
+use Magento\Backend\Block\Template;
+use Magento\Framework\Escaper;
+
+/** @var Template $block */
+/** @var Escaper $escaper */
+/** @var HyvaCsp $hyvaCsp */
+
+/** This AlpineJS component inherits the scope from Hyva_AdminDashboardFramework::js/widget/instance.phtml */
+/** @link https://alpinejs.dev/directives/data#scope */
+?>
+<script>
+    /**
+     * PhpStorm-style page typeahead. The coordinator is shared because this template can be
+     * included once for the dashboard widget and once for the global Quick Access dialog.
+     */
+    if (!window.quickNavPageFinder) {
+        window.quickNavPageFinder = (() => {
+            const registrations = new Map();
+            const observers = new Map();
+            const matchClass = 'quicknav-page-match';
+            const activeClass = 'quicknav-page-match--active';
+            let buffer = '';
+            let matches = [];
+            let activeIndex = -1;
+
+            const isVisible = (element) => {
+                if (!element || !element.isConnected) {
+                    return false;
+                }
+                const style = window.getComputedStyle(element);
+                return style.display !== 'none'
+                    && style.visibility !== 'hidden'
+                    && element.getClientRects().length > 0;
+            };
+
+            // `.quicknav-widget` covers more than its own `<input>` (already implied by
+            // `input` below) specifically because keyboard navigation can now move real focus
+            // onto a result `<li>` — itself a page-typeahead candidate per `candidateSelector`
+            // below (`li`, `[role="option"]`). Without this, typing while a row has focus (to
+            // keep refining a search after arrowing through results) got captured by THIS
+            // page-wide finder instead — buffering into its own match list and drawing its own
+            // `.quicknav-page-match--active` outline alongside the widget's own focus styling,
+            // two independent highlights that could drift onto different elements.
+            const isIgnoredTarget = (target) => target instanceof Element && target.closest(
+                'input, textarea, select, option, [contenteditable="true"], [contenteditable=""], .quicknav-widget'
+            );
+
+            const clearClasses = () => {
+                document.querySelectorAll('.' + matchClass + ', .' + activeClass).forEach((element) => {
+                    element.classList.remove(matchClass, activeClass);
+                });
+                document.querySelectorAll('.quicknav-page-highlight').forEach((element) => {
+                    const parent = element.parentNode;
+                    element.replaceWith(document.createTextNode(element.textContent || ''));
+                    parent?.normalize();
+                });
+            };
+
+            const pauseObservers = () => observers.forEach((observer) => observer.disconnect());
+
+            const resumeObservers = () => observers.forEach((observer, root) => observer.observe(root, {
+                childList: true,
+                subtree: true,
+            }));
+
+            const clear = () => {
+                pauseObservers();
+                buffer = '';
+                matches = [];
+                activeIndex = -1;
+                clearClasses();
+                resumeObservers();
+            };
+
+            const candidateSelector = 'button, a, label, li, h1, h2, h3, h4, h5, h6, th, td, [role="option"], [role="menuitem"], [data-ui-id]';
+
+            const containsWildcardQuery = (text, query) => {
+                let offset = 0;
+                const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+                const normalizedText = text.toLocaleLowerCase();
+
+                return terms.every((term) => {
+                    const matchAt = normalizedText.indexOf(term, offset);
+                    if (matchAt === -1) {
+                        return false;
+                    }
+                    offset = matchAt + term.length;
+                    return true;
+                });
+            };
+
+            const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            const highlightTerms = (element, query) => {
+                const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+                if (terms.length === 0) {
+                    return;
+                }
+                const termPattern = new RegExp(terms.map(escapeRegExp).join('|'), 'gi');
+                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+                const textNodes = [];
+                let node;
+                while ((node = walker.nextNode())) {
+                    if (!node.parentElement?.closest('.quicknav-page-highlight, script, style')) {
+                        textNodes.push(node);
+                    }
+                }
+
+                textNodes.forEach((textNode) => {
+                    const text = textNode.nodeValue || '';
+                    if (!termPattern.test(text)) {
+                        termPattern.lastIndex = 0;
+                        return;
+                    }
+                    termPattern.lastIndex = 0;
+                    const fragment = document.createDocumentFragment();
+                    let lastIndex = 0;
+                    text.replace(termPattern, (match, offset) => {
+                        fragment.append(document.createTextNode(text.slice(lastIndex, offset)));
+                        const mark = document.createElement('mark');
+                        mark.className = 'quicknav-page-highlight';
+                        mark.textContent = match;
+                        fragment.append(mark);
+                        lastIndex = offset + match.length;
+                        return match;
+                    });
+                    fragment.append(document.createTextNode(text.slice(lastIndex)));
+                    textNode.replaceWith(fragment);
+                });
+            };
+
+            const refresh = () => {
+                pauseObservers();
+                clearClasses();
+                if (!buffer) {
+                    resumeObservers();
+                    return;
+                }
+
+                const pageWide = [...registrations.values()].some((registration) => registration.pageWide);
+                const roots = pageWide
+                    ? [document.body]
+                    : [...registrations.keys()].filter(isVisible);
+                const found = new Set();
+
+                roots.forEach((root) => {
+                    if (!isVisible(root)) {
+                        return;
+                    }
+                    root.querySelectorAll(candidateSelector).forEach((element) => {
+                        if (!isVisible(element) || found.has(element)) {
+                            return;
+                        }
+                        const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
+                        if (text && containsWildcardQuery(text, buffer)) {
+                            found.add(element);
+                        }
+                    });
+                });
+
+                // Keep the outermost matching item so nested labels/buttons do not produce
+                // duplicate outlines or wrap the same text more than once.
+                matches = [...found].filter((element) => ![...found].some((parent) =>
+                    parent !== element && parent.contains(element)
+                ));
+                matches.forEach((element) => {
+                    element.classList.add(matchClass);
+                    highlightTerms(element, buffer);
+                });
+                if (activeIndex >= matches.length) {
+                    activeIndex = -1;
+                }
+                if (activeIndex >= 0 && matches[activeIndex]) {
+                    matches[activeIndex].classList.add(activeClass);
+                }
+                resumeObservers();
+            };
+
+            const move = (direction) => {
+                if (!buffer || matches.length === 0) {
+                    return;
+                }
+                activeIndex = (activeIndex + direction + matches.length) % matches.length;
+                refresh();
+                matches[activeIndex]?.scrollIntoView({block: 'nearest', inline: 'nearest'});
+            };
+
+            const onKeydown = (event) => {
+                const ignoredTarget = isIgnoredTarget(event.target);
+                if (event.ctrlKey || event.metaKey || event.altKey || ignoredTarget) {
+                    return;
+                }
+                if (event.key === 'Escape') {
+                    if (buffer) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    clear();
+                    return;
+                }
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    if (buffer) {
+                        event.preventDefault();
+                        move(event.key === 'ArrowDown' ? 1 : -1);
+                    }
+                    return;
+                }
+                if (event.key === 'Backspace') {
+                    if (buffer) {
+                        buffer = buffer.slice(0, -1);
+                        activeIndex = -1;
+                        refresh();
+                    }
+                    return;
+                }
+                if (event.key.length !== 1) {
+                    return;
+                }
+                if (/\s/.test(event.key)) {
+                    event.preventDefault();
+                }
+                buffer += event.key;
+                activeIndex = -1;
+                refresh();
+            };
+
+            document.addEventListener('keydown', onKeydown, true);
+            document.addEventListener('click', clear, true);
+
+            return {
+                isActive() {
+                    return buffer !== '';
+                },
+
+                clear() {
+                    clear();
+                },
+
+                register(root, pageWide) {
+                    registrations.set(root, {pageWide});
+                    const observer = new MutationObserver(() => {
+                        if (buffer) {
+                            refresh();
+                        }
+                    });
+                    observers.set(root, observer);
+                    observer.observe(root, {childList: true, subtree: true});
+                    return () => {
+                        observers.get(root)?.disconnect();
+                        observers.delete(root);
+                        registrations.delete(root);
+                        if (registrations.size === 0) {
+                            clear();
+                        } else {
+                            refresh();
+                        }
+                    };
+                },
+            };
+        })();
+    }
+
+    function quickNavWidget(searchUrl, userId, icons, accessibleTypes, pageWideHighlighting)
+    {
+        /**
+         * one shared, human-readable label per entity type, folded into the
+         * breadcrumb/context line rather than a separate line. config_section/
+         * config_group/config_field originally all shared the single label "Setting" — reads
+         * fine in a result row's breadcrumb (which already spells out the section/group/field
+         * depth textually) but made the three type-filter chips indistinguishable from each
+         * other, since the chip row has no breadcrumb to disambiguate them. Given each its own
+         * label instead, matching the hierarchy depth (Section > Group > Field) each type
+         * actually represents.
+         * Declared inside this factory function (not at top-level script scope) because
+         * search-panel.phtml — and therefore this file — can render twice on one page (the
+         * dashboard widget and the 009 global overlay both mount it), and a top-level `const`
+         * redeclared across two separately-injected `<script>` tags throws a page-breaking
+         * SyntaxError, unlike a plain `function` declaration.
+         */
+        const typeLabels = {
+            product: 'Product',
+            category: 'Category',
+            config_section: 'Setting',
+            config_group: 'Setting Group',
+            config_field: 'Setting Field',
+            menu_item: 'Menu Item',
+            customer: 'Customer',
+            order: 'Order',
+            cms_block: 'CMS Block',
+            cms_page: 'CMS Page',
+            url_rewrite: 'URL Rewrite',
+            url_route: 'Storefront Route',
+            search_term: 'Search Term',
+            store_view: 'Store View',
+            product_attribute: 'Attribute',
+            attribute_set: 'Attribute Set',
+            admin_user: 'Admin User',
+            admin_role: 'Admin Role',
+            customer_group: 'Customer Group',
+            review: 'Review',
+            cart_price_rule: 'Cart Price Rule',
+            catalog_price_rule: 'Catalog Price Rule',
+            widget_instance: 'Widget',
+            email_template: 'Email Template',
+            newsletter_template: 'Newsletter Template',
+            newsletter_subscriber: 'Newsletter Subscriber',
+            custom_variable: 'Custom Variable',
+            search_synonym: 'Search Synonym',
+            tax_rule: 'Tax Rule',
+            tax_rate: 'Tax Rate',
+            integration: 'Integration',
+            invoice: 'Invoice',
+            shipment: 'Shipment',
+            credit_memo: 'Credit Memo',
+            admin_activity_log: 'Admin Activity',
+            coupon_code: 'Coupon Code',
+        };
+
+        /**
+         * the type-filter chip row represents a *type*, not a specific result, so
+         * there's no `result.icon` to read from — this mirrors each provider's own `ICON_KEY`
+         * constant (ViewModel/IconDictionary.php is the server-side source of truth; keep this
+         * in sync with it and with each provider if either changes).
+         */
+        const typeIcons = {
+            product: 'package',
+            category: 'folder-tree',
+            config_section: 'settings',
+            config_group: 'sliders-horizontal',
+            config_field: 'tag',
+            menu_item: 'menu',
+            customer: 'user',
+            order: 'receipt',
+            cms_block: 'layout-panel-top',
+            cms_page: 'file-text',
+            url_rewrite: 'route',
+            url_route: 'route',
+            search_term: 'search-check',
+            store_view: 'store',
+            product_attribute: 'list',
+            attribute_set: 'layers',
+            admin_user: 'user-cog',
+            admin_role: 'shield-check',
+            customer_group: 'users',
+            review: 'star',
+            cart_price_rule: 'ticket-percent',
+            catalog_price_rule: 'badge-percent',
+            widget_instance: 'puzzle',
+            email_template: 'mail',
+            newsletter_template: 'megaphone',
+            newsletter_subscriber: 'inbox',
+            custom_variable: 'braces',
+            search_synonym: 'arrow-left-right',
+            tax_rule: 'calculator',
+            tax_rate: 'percent',
+            integration: 'plug',
+            invoice: 'receipt-text',
+            shipment: 'truck',
+            credit_memo: 'undo',
+            admin_activity_log: 'history',
+            coupon_code: 'qr-code',
+        };
+
+        return {
+            query: '',
+            results: [],
+            loading: false,
+            urlPasteAttempted: false,
+            urlPasteAccessDenied: false,
+            limiter: null,
+            openSearchStatus: 'available',
+            highlightedIndex: -1,
+            abortController: null,
+            gridItemEl: null,
+            openScopeResultId: null,
+            openStorefrontResultId: null,
+            popupBlockedUrl: null,
+            userId: userId,
+            icons: icons,
+            accessibleTypes: accessibleTypes || [],
+            activeTypeFilters: [],
+            filtersHidden: false,
+            pinned: [],
+            recents: [],
+            usage: [],
+            pageFinderCleanup: null,
+
+            /**
+             * Personalization (008): loaded once on component init, not per keystroke. The
+             * widget tile only ever auto-grows during performSearch() today — with tiles/rows
+             * now able to render in the empty state too (pinned/most-used/recent), the tile
+             * must also fit *this* content on load, not just search results, otherwise it
+             * silently clips/overflows behind the dashboard tile's original fixed height.
+             */
+            init()
+            {
+                this.pinned = this.loadList('pinned');
+                this.recents = this.loadList('recents');
+                this.usage = this.loadList('usage');
+                try {
+                    this.filtersHidden = window.localStorage.getItem(this.storageKey('filters-hidden')) === '1';
+                } catch (error) {
+                    this.filtersHidden = false;
+                }
+                this.pageFinderCleanup = window.quickNavPageFinder.register(this.$el, pageWideHighlighting);
+                this.$nextTick(() => this.expandWidgetToFitResults());
+                // Generic lifecycle signal, not tied to any particular consumer: fires once
+                // this widget instance's own Alpine scope is fully set up. The `dataset` flag
+                // covers a listener that attaches *after* this already ran (e.g. content
+                // injected into `.quicknav-widget__extensions` well after this widget
+                // initialized); the event covers a listener already attached beforehand. Either
+                // way, nothing external has to guess via arbitrary timing.
+                this.$el.dataset.quicknavReady = 'true';
+                this.$el.dispatchEvent(new CustomEvent('quicknav:ready', {bubbles: true}));
+            },
+
+            destroy()
+            {
+                if (this.pageFinderCleanup) {
+                    this.pageFinderCleanup();
+                    this.pageFinderCleanup = null;
+                }
+            },
+
+            search()
+            {
+                if (this.query.trim().length === 0) {
+                    this.resetResults();
+                    // a type filter is a per-search refinement, not a sticky session
+                    // setting — emptying the query resets it, same as Escape/clear() does.
+                    this.activeTypeFilters = [];
+                    // Not collapseWidget(): the empty state can itself contain pinned/most-used/
+                    // recent content taller than the original tile size, so size to whatever's
+                    // actually visible rather than assuming "empty query" always means "small".
+                    this.$nextTick(() => this.expandWidgetToFitResults());
+                    return;
+                }
+
+                this.performSearch(this.query, false);
+            },
+
+            /**
+             * toggles a type filter chip on/off (multi-select) and immediately re-runs
+             * the current search — the filter is meant to restrict results live, without
+             * requiring the user to retype anything.
+             */
+            toggleTypeFilter(type)
+            {
+                this.activeTypeFilters = this.isTypeFilterActive(type)
+                    ? this.activeTypeFilters.filter(active => active !== type)
+                    : [...this.activeTypeFilters, type];
+
+                if (this.query.trim().length > 0) {
+                    this.performSearch(this.query, false);
+                }
+            },
+
+            isTypeFilterActive(type)
+            {
+                return this.activeTypeFilters.includes(type);
+            },
+
+            iconForType(type)
+            {
+                return typeIcons[type] || 'link';
+            },
+
+            /**
+             * "Expand search": re-runs a limiter's remainder text unscoped, across
+             * every provider. Uses the remainder alone (not the original "<keyword> <text>"
+             * query) so the keyword itself can't reintroduce the exact cross-type noise the
+             * limiter was scoping away, and passes bypassLimiter so this can never re-trigger
+             * a limiter even if the remainder itself looks like a different keyword.
+             */
+            expandSearch()
+            {
+                if (!this.limiter) {
+                    return;
+                }
+                this.query = this.limiter.remainder;
+                this.performSearch(this.limiter.remainder, true);
+            },
+
+            /**
+             * POST + form-key, not GET + admin secret key: `searchUrl` is baked once into
+             * Hyva's cached widget config, not rebuilt per request, so a secret key embedded
+             * in it goes stale as soon as the session that rendered it rotates (e.g. next
+             * login) and every search would silently fail request validation. window.FORM_KEY
+             * is instead read fresh here, at fetch time — Magento's admin layout re-renders it
+             * on every full page load, so it's always current regardless of widget-cache age.
+             */
+            performSearch(text, bypassLimiter)
+            {
+                if (this.abortController) {
+                    this.abortController.abort();
+                }
+                this.abortController = new AbortController();
+                this.loading = true;
+                this.$nextTick(() => this.expandWidgetToFitResults());
+
+                const body = new URLSearchParams();
+                body.set('q', text);
+                body.set('form_key', window.FORM_KEY);
+                if (bypassLimiter) {
+                    body.set('expand', '1');
+                }
+                this.activeTypeFilters.forEach(type => body.append('types[]', type));
+
+                fetch(searchUrl, {
+                    method: 'POST',
+                    signal: this.abortController.signal,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: body.toString(),
+                })
+                    .then(response => response.ok ? response.json() : Promise.reject(response))
+                    .then(data => {
+                        this.results = data.results || [];
+                        this.urlPasteAttempted = Boolean(data.urlPasteAttempted);
+                        this.urlPasteAccessDenied = Boolean(data.urlPasteAccessDenied);
+                        this.limiter = data.limiter || null;
+                        this.openSearchStatus = data.openSearchStatus || 'available';
+                        // Nothing pre-highlighted: the first Down press should land on the
+                        // first result, not skip past it to the second — see
+                        // highlightNext()/highlightPrevious() for the -1 "nothing highlighted
+                        // yet" wraparound this relies on.
+                        this.highlightedIndex = -1;
+                        this.loading = false;
+                        this.$nextTick(() => this.expandWidgetToFitResults());
+                    })
+                    .catch(error => {
+                        if (error && error.name === 'AbortError') {
+                            return;
+                        }
+                        this.resetResults();
+                        this.loading = false;
+                        this.$nextTick(() => this.expandWidgetToFitResults());
+                    });
+            },
+
+            resetResults()
+            {
+                this.results = [];
+                this.urlPasteAttempted = false;
+                this.urlPasteAccessDenied = false;
+                this.limiter = null;
+                this.openSearchStatus = 'available';
+                this.highlightedIndex = -1;
+            },
+
+            /**
+             * The dashboard grid (GridStack) can grow a widget's own tile so sibling widgets
+             * get pushed aside (animated by GridStack's own `animate: true` grid option)
+             * instead of the results list overlaying them. GridStack's built-in
+             * sizeToContent/resizeToContent heuristic measures the content wrapper's
+             * firstElementChild to infer natural height, but Hyva's widget markup puts an
+             * empty `.drag-handle` div there, so that heuristic always measures ~0 for any
+             * Hyva dashboard widget. Instead we measure our own content directly and drive
+             * `grid.update(el, {h})` ourselves.
+             */
+            getGridNode()
+            {
+                if (!this.gridItemEl) {
+                    this.gridItemEl = this.$el.closest('.grid-stack-item');
+                }
+                return this.gridItemEl ? this.gridItemEl.gridstackNode : null;
+            },
+
+            /**
+             * No-ops outside the dashboard (e.g. the 009 global overlay): there, this.$el has no
+             * `.grid-stack-item` ancestor, getGridNode() returns null, and there is no tile to
+             * auto-grow — the overlay sizes itself via its own dialog/CSS instead.
+             */
+            expandWidgetToFitResults()
+            {
+                const node = this.getGridNode();
+                if (!node || !node.grid) {
+                    return;
+                }
+                const section = this.gridItemEl.querySelector('.grid-stack-item-content');
+                // Hyva's own `.widget-main-wrapper` is itself stretched (`overflow: auto`) to
+                // always fill whatever height the tile currently has, so it can't be used as a
+                // content-height measurement — its clientHeight/scrollHeight reflect the tile's
+                // current (possibly stale) allocation, not what's actually inside it. Our own
+                // `.quicknav-widget-wrapper` (the div this template renders its content into,
+                // one level in) is never stretched, so it sizes to true content and is the one
+                // to measure.
+                const content = this.gridItemEl.querySelector('.quicknav-widget-wrapper');
+                if (!content || !section) {
+                    return;
+                }
+                const cellHeight = parseInt(node.grid.opts.cellHeight, 10) || 60;
+                /**
+                 * Chrome (widget header + tile padding) has to come from elements whose OWN
+                 * size never depends on the tile's current row count — not from subtracting a
+                 * stretched wrapper's clientHeight off the tile's *currently assigned* height,
+                 * which is what this used to do. That subtraction was self-defeating: the
+                 * previous measurement point sits inside a chain of ancestors Hyva's own CSS
+                 * always stretches to fill whatever height the tile currently has — so "chrome"
+                 * measured that way just reproduced (current tile height + 8) regardless of what
+                 * the content actually needed. The tile could grow (when content genuinely
+                 * overflowed the current allocation) but could never shrink, since the formula
+                 * always reconstructed its own last size. Measuring the *distance* from section's
+                 * top (fixed padding + header) down to our own content div's top, plus section's
+                 * own (constant) bottom padding, gives a chrome figure that's independent of the
+                 * tile's current height, so this can shrink as freely as it grows.
+                 */
+                const chromeAbove = content.getBoundingClientRect().top - section.getBoundingClientRect().top;
+                const chromeBelow = parseFloat(getComputedStyle(section).paddingBottom) || 0;
+                let desiredHeight = chromeAbove + content.scrollHeight + chromeBelow + 8;
+                /**
+                 * An open scope/storefront-view picker (`.quicknav-widget__scope-menu`, shared
+                 * by both) is `position: absolute` — that never contributes to its container's
+                 * `scrollHeight` no matter how far it visually extends, a fixed browser behavior
+                 * `scrollHeight` alone can't be coaxed into accounting for. Measured directly
+                 * from the open menu's own rendered position instead, whenever one is open.
+                 */
+                const openMenu = this.gridItemEl.querySelector('.quicknav-widget__scope-menu');
+                if (openMenu) {
+                    const menuBottom = openMenu.getBoundingClientRect().bottom - section.getBoundingClientRect().top;
+                    desiredHeight = Math.max(desiredHeight, menuBottom + chromeBelow + 8);
+                }
+                const desiredRows = Math.ceil(desiredHeight / cellHeight);
+                const maxRows = Math.floor((window.innerHeight - 120) / cellHeight);
+                const targetRows = Math.max(Math.min(desiredRows, maxRows), 1);
+
+                this.resizeGridItemTo(targetRows);
+            },
+
+            /**
+             * Neither a plain `$nextTick()` nor `$nextTick()` plus a `setTimeout(…, 0)` proved
+             * reliable here — confirmed live: both still measured the just-toggled dropdown's
+             * `getBoundingClientRect()` before its layout had actually settled, undersizing the
+             * tile. A double `requestAnimationFrame` (wait for two full paint cycles) is the
+             * standard robust way to wait for a DOM change to be fully laid out and painted
+             * without guessing at an arbitrary delay, and measured correctly every time in
+             * testing.
+             */
+            deferredExpandWidgetToFitResults()
+            {
+                requestAnimationFrame(() => requestAnimationFrame(() => this.expandWidgetToFitResults()));
+            },
+
+            /**
+             * GridStack's `grid.update()` repositions/reflows the tile's DOM node, which blurs
+             * whatever element currently has focus (e.g. this widget's own search input) even
+             * though it doesn't remove it from the document. Skip the call entirely when the
+             * height is already correct, and otherwise save + restore focus and cursor
+             * position across the call so typing is never interrupted.
+             */
+            resizeGridItemTo(rows)
+            {
+                const node = this.getGridNode();
+                if (!node || !node.grid || node.h === rows) {
+                    return;
+                }
+
+                const activeEl = document.activeElement;
+                const restoreFocus = this.gridItemEl.contains(activeEl);
+                const selectionStart = restoreFocus ? activeEl.selectionStart : null;
+                const selectionEnd = restoreFocus ? activeEl.selectionEnd : null;
+
+                node.grid.update(this.gridItemEl, {h: rows});
+
+                if (restoreFocus) {
+                    activeEl.focus();
+                    if (selectionStart !== null) {
+                        activeEl.setSelectionRange(selectionStart, selectionEnd);
+                    }
+                }
+            },
+
+            /**
+             * Keyboard navigation moves REAL focus (not just a visual highlight) between the
+             * input and the result rows — Down/Up cycle input -> result0 -> result1 -> ... ->
+             * resultLast -> input -> result0 -> ... (and the same in reverse for Up), so the
+             * boundary case wraps back to the search bar rather than into the opposite end of
+             * the list. Deliberately reads/writes real focus only — never `highlightedIndex` —
+             * so this can never desync from a separately-tracked JS variable the way an earlier
+             * version did; `.quicknav-widget__result:focus` (CSS) is the single source of truth
+             * for "this is the keyboard-selected row" precisely because native focus can't drift
+             * out of sync with itself. `highlightedIndex` still exists, but only for the
+             * mouse-hover-driven convenience `activateHighlighted()` reads — see its own doc.
+             */
+            highlightNext()
+            {
+                if (this.results.length === 0) return;
+                const current = this.currentFocusedResultIndex();
+                if (current === -1) {
+                    this.focusResult(0);
+                } else if (current === this.results.length - 1) {
+                    this.focusInput();
+                } else {
+                    this.focusResult(current + 1);
+                }
+            },
+
+            highlightPrevious()
+            {
+                if (this.results.length === 0) return;
+                const current = this.currentFocusedResultIndex();
+                if (current === -1) {
+                    this.focusResult(this.results.length - 1);
+                } else if (current === 0) {
+                    this.focusInput();
+                } else {
+                    this.focusResult(current - 1);
+                }
+            },
+
+            /**
+             * `-1` is unreachable from `currentFocusedResultIndex()` (only real result rows are
+             * queried), so this is the one place real focus is on a row but nothing in that row
+             * list matches — i.e. never, in practice; kept only as a defensive fallback in case
+             * `$refs.resultsList` isn't mounted yet.
+             */
+            currentFocusedResultIndex()
+            {
+                if (!this.$refs.resultsList) return -1;
+                const rows = [...this.$refs.resultsList.querySelectorAll('.quicknav-widget__result')];
+
+                return rows.indexOf(document.activeElement);
+            },
+
+            focusResult(index)
+            {
+                if (!this.$refs.resultsList) return;
+                const rows = this.$refs.resultsList.querySelectorAll('.quicknav-widget__result');
+                rows[index]?.focus();
+            },
+
+            focusInput()
+            {
+                this.highlightedIndex = -1;
+                this.$refs.input?.focus();
+            },
+
+            /**
+             * Enter-on-the-search-box shortcut: activates whichever row the mouse last hovered
+             * (`highlightedIndex`, set/cleared by the row's `@mouseenter`/`@mouseleave`), so a
+             * user can hover without clicking and still confirm with Enter. Not reachable via
+             * keyboard-only navigation — pressing Down/Up moves real focus onto the row itself,
+             * where its own `@keydown.enter` handles activation directly instead.
+             */
+            activateHighlighted()
+            {
+                const result = this.results[this.highlightedIndex];
+                if (result) {
+                    this.activate(result);
+                }
+            },
+
+            activate(result)
+            {
+                if (result && result.url) {
+                    this.recordRecent(result, result.url);
+                    this.recordUsage(result, result.url);
+                    window.location.href = result.url;
+                }
+            },
+
+            /**
+             * Category drill-down (004): the explicit "view products" action alongside the
+             * default "edit" action (`activate()`/`result.url`), e.g. a category's own
+             * index-backed products page.
+             */
+            activateSecondary(result)
+            {
+                if (result && result.secondaryActionUrl) {
+                    this.recordRecent(result, result.secondaryActionUrl);
+                    this.recordUsage(result, result.secondaryActionUrl);
+                    window.location.href = result.secondaryActionUrl;
+                }
+            },
+
+            clear()
+            {
+                this.query = '';
+                this.resetResults();
+                // same reasoning as search()'s empty-query branch.
+                this.activeTypeFilters = [];
+                // Not collapseWidget() — see search()'s empty-query branch for why.
+                this.$nextTick(() => this.expandWidgetToFitResults());
+            },
+
+            handleEscape()
+            {
+                if (this.query.length > 0) {
+                    this.clear();
+                    return;
+                }
+
+                if (window.quickNavPageFinder.isActive()) {
+                    window.quickNavPageFinder.clear();
+                    return;
+                }
+
+                const dialog = this.$el.closest('dialog');
+                const accessRoot = dialog?.closest('.quicknav-access');
+                if (accessRoot && window.Alpine?.$data) {
+                    window.Alpine.$data(accessRoot).close();
+                }
+            },
+
+            /**
+             * Scope/store-view awareness (005): each result's `scopeChoices` are precomputed,
+             * fully-built URLs from the server (SearchResult::scopeChoices), so choosing one is
+             * just a navigation — no client-side URL surgery, and the untouched `result.url`
+             * (activate()) stays byte-for-byte identical whether or not this picker is ever
+             * opened.
+             */
+            toggleScopePicker(result)
+            {
+                this.openScopeResultId = this.openScopeResultId === result.id ? null : result.id;
+                this.deferredExpandWidgetToFitResults();
+            },
+
+            closeScopePicker()
+            {
+                this.openScopeResultId = null;
+                this.deferredExpandWidgetToFitResults();
+            },
+
+            activateWithScope(choice)
+            {
+                const parentResult = this.results.find(r => r.id === this.openScopeResultId);
+                this.openScopeResultId = null;
+                if (choice && choice.url) {
+                    if (parentResult) {
+                        this.recordRecent(parentResult, choice.url);
+                        this.recordUsage(parentResult, choice.url);
+                    }
+                    window.location.href = choice.url;
+                }
+            },
+
+            /**
+             * Storefront view links (014): its own scalar open/close state, independent of
+             * openScopeResultId — the scope picker (005) and this picker are two separate
+             * dropdowns that can each appear on the same result row, and sharing one scalar
+             * between them would mean opening one silently closes the other instead of each
+             * managing its own visibility.
+             */
+            toggleStorefrontPicker(result)
+            {
+                this.openStorefrontResultId = this.openStorefrontResultId === result.id ? null : result.id;
+                this.deferredExpandWidgetToFitResults();
+            },
+
+            closeStorefrontPicker()
+            {
+                this.openStorefrontResultId = null;
+                this.deferredExpandWidgetToFitResults();
+            },
+
+            /**
+             * deliberately does NOT pass 'noopener'/'noreferrer' as window.open()
+             * features — per spec, a scripted popup opened with either always returns `null`
+             * to the caller regardless of whether it actually succeeded (there being no window
+             * reference to hand back is the whole point of noopener), which would make the
+             * popup-blocked detection below a permanent false positive rather than a real
+             * check. Severing `newTab.opener` manually from the *opener's* side achieves the
+             * exact same "never leak a window.opener reference back to the storefront tab"
+             * guarantee while still letting a genuinely blocked popup (newTab === null) be told
+             * apart from a successful one. This is a <button>, not a real anchor, so there's no
+             * href/rel to set instead.
+             *
+             * Deliberately does NOT call recordRecent()/recordUsage(): those lists always
+             * navigate via `window.location.href` in the *current* admin tab
+             * (activatePersonalized()), and a storefront URL must never end up there — putting
+             * one in Recent/Most-Used would silently break this feature's own new-tab-only
+             * guarantee the next time that entry is clicked.
+             */
+            openStorefront(choice)
+            {
+                if (!choice || !choice.url) {
+                    return;
+                }
+                this.popupBlockedUrl = null;
+                const newTab = window.open(choice.url, '_blank');
+                if (newTab) {
+                    newTab.opener = null;
+                } else {
+                    this.popupBlockedUrl = choice.url;
+                }
+            },
+
+            dismissPopupBlockedNotice()
+            {
+                this.popupBlockedUrl = null;
+            },
+
+            toggleFiltersVisibility()
+            {
+                this.filtersHidden = !this.filtersHidden;
+                try {
+                    window.localStorage.setItem(this.storageKey('filters-hidden'), this.filtersHidden ? '1' : '0');
+                } catch (error) {
+                    // Storage unavailable — the toggle still works for this session, it just
+                    // doesn't persist across page loads.
+                }
+            },
+
+            /**
+             * Personalization (008): recents/pins are namespaced per admin user id
+             * (Model/Widget/QuickNav::getDisplayData()), so two admin accounts sharing a
+             * browser profile never see each other's lists — no server-side persistence at all.
+             */
+            storageKey(kind)
+            {
+                return 'quicknav-' + kind + '-' + this.userId;
+            },
+
+            loadList(kind)
+            {
+                try {
+                    const raw = window.localStorage.getItem(this.storageKey(kind));
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (error) {
+                    return [];
+                }
+            },
+
+            saveList(kind, list)
+            {
+                try {
+                    window.localStorage.setItem(this.storageKey(kind), JSON.stringify(list));
+                } catch (error) {
+                    // Storage unavailable (private browsing, quota) — personalization simply
+                    // doesn't persist this session; the rest of the widget is unaffected.
+                }
+            },
+
+            /**
+             * falls back to a title-cased version of the raw type string for a future
+             * entity type added without updating `typeLabels`, rather than blank text.
+             */
+            typeLabel(type)
+            {
+                if (typeLabels[type]) {
+                    return typeLabels[type];
+                }
+                return String(type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            },
+
+            isPinned(result)
+            {
+                return this.pinned.some(item => item.id === result.id);
+            },
+
+            togglePin(result)
+            {
+                if (this.isPinned(result)) {
+                    this.pinned = this.pinned.filter(item => item.id !== result.id);
+                } else {
+                    this.pinned = [this.toPersonalizationItem(result, result.url), ...this.pinned];
+                }
+                this.saveList('pinned', this.pinned);
+                // Pinning/unpinning while the query is empty grows/shrinks the Pinned tile
+                // section itself — refit so a newly pinned tile isn't clipped below the fold.
+                if (this.query.length === 0) {
+                    this.$nextTick(() => this.expandWidgetToFitResults());
+                }
+            },
+
+            /**
+             * caps at 5 distinct destinations, most-recent-first; re-navigating to an
+             * already-recorded destination re-orders it to the front instead of duplicating it.
+             */
+            recordRecent(result, url)
+            {
+                const item = this.toPersonalizationItem(result, url);
+                this.recents = [item, ...this.recents.filter(existing => existing.id !== item.id)].slice(0, 5);
+                this.saveList('recents', this.recents);
+            },
+
+            /**
+             * "Much used destinations" (Windows Start Menu-style "Most used"): a frequency
+             * count per destination, independent of and uncapped unlike `recents` — a daily
+             * destination stays near the top even if something else was opened moments ago.
+             */
+            recordUsage(result, url)
+            {
+                const existing = this.usage.find(item => item.id === result.id);
+                if (existing) {
+                    existing.count += 1;
+                    existing.url = url;
+                } else {
+                    this.usage.push({...this.toPersonalizationItem(result, url), count: 1});
+                }
+                this.usage.sort((a, b) => b.count - a.count);
+                this.saveList('usage', this.usage);
+            },
+
+            topUsage()
+            {
+                return this.usage.slice(0, 6);
+            },
+
+            /**
+             * independent per-section clearing — `kind` is always 'pinned', 'recents',
+             * or 'usage', the same vocabulary already used by loadList()/saveList(), and matches
+             * this component's own state property name 1:1, so clearing never touches the other
+             * two lists. No confirmation prompt (feature-complete.md's explicit out-of-scope
+             * note) — a purely local, easily-rebuilt list doesn't warrant one.
+             */
+            clearList(kind)
+            {
+                this[kind] = [];
+                this.saveList(kind, this[kind]);
+                if (this.query.length === 0) {
+                    this.$nextTick(() => this.expandWidgetToFitResults());
+                }
+            },
+
+            toPersonalizationItem(result, url)
+            {
+                return {
+                    id: result.id,
+                    type: result.type || '',
+                    label: result.label,
+                    context: result.context,
+                    url: url,
+                    icon: result.icon || 'link',
+                    imageUrl: result.imageUrl || null,
+                };
+            },
+
+            activatePersonalized(item)
+            {
+                if (item && item.url) {
+                    this.recordRecent(item, item.url);
+                    this.recordUsage(item, item.url);
+                    window.location.href = item.url;
+                }
+            },
+        };
+    }
+
+    window.addEventListener('alpine:init', () => Alpine.data('quickNavWidget', quickNavWidget), {once: true});
+</script>
+<?php isset($hyvaCsp) && $hyvaCsp->registerInlineScript(); ?>

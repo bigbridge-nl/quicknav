@@ -1,0 +1,63 @@
+<?php
+
+declare(strict_types=1);
+
+use BigBridge\QuickNav\Block\Adminhtml\AccessTrigger;
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template as ChildTemplate;
+
+/** @var AccessTrigger $block */
+/** @var Escaper $escaper */
+?>
+<div class="quicknav-access" x-data="quickNavAccess(<?= $block->shouldShowLoginHint() ? 'true' : 'false' ?>)">
+    <button type="button"
+            class="quicknav-access__trigger"
+            @click="open"
+            title="<?= $escaper->escapeHtmlAttr(__('Quick Access QuickNav (Ctrl+K)')) ?>"
+            aria-label="<?= $escaper->escapeHtmlAttr(__('Quick Access QuickNav (Ctrl+K)')) ?>">
+        <?php /**
+         * Inlined rather than an <img> so it inherits currentColor like the other header icons.
+         * Source copy for reuse: view/adminhtml/web/images/quicknav-speed.svg.
+         */ ?>
+        <svg class="quicknav-access__trigger-icon" width="18" height="18" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+            <line x1="1" y1="7" x2="6" y2="7" opacity="0.4"/>
+            <line x1="1" y1="11" x2="8.5" y2="11" opacity="0.7"/>
+            <line x1="1" y1="15" x2="6" y2="15" opacity="0.4"/>
+            <circle cx="14" cy="10" r="5"/>
+            <line x1="17.54" y1="13.54" x2="22" y2="18"/>
+        </svg>
+    </button>
+    <?php /**
+     * Dismissed by its close button, by an auto-hide timer, or implicitly by opening the overlay.
+     */ ?>
+    <div class="quicknav-access__hint"
+         x-show="hintVisible"
+         x-cloak
+         x-transition
+         role="status">
+        <button type="button"
+                class="quicknav-access__hint-dismiss"
+                @click="dismissHint"
+                aria-label="<?= $escaper->escapeHtmlAttr(__('Dismiss')) ?>">&times;</button>
+        <p>
+            <?= $escaper->escapeHtml(__('Tip: press')) ?>
+            <kbd x-text="shortcutLabel"></kbd>
+            <?= $escaper->escapeHtml(__('anytime to open Quick Access QuickNav.')) ?>
+        </p>
+    </div>
+    <dialog class="quicknav-access__dialog"
+            x-ref="dialog"
+            @keydown.capture.escape.prevent.stop="handleDialogEscape"
+            x-htmldialog.noscroll.closeby.any="close">
+        <?php
+        echo $block->getLayout()->createBlock(ChildTemplate::class)
+            ->setTemplate('BigBridge_QuickNav::widget/search-panel.phtml')
+            ->setData('search_url', $block->getSearchUrl())
+            ->setData('user_id', $block->getUserId())
+            ->setData('accessible_types', $block->getAccessibleTypes())
+            ->toHtml();
+        ?>
+    </dialog>
+</div>

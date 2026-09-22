@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+use BigBridge\QuickNav\Block\Adminhtml\Category\Products;
+use Magento\Framework\Escaper;
+
+/** @var Products $block */
+/** @var Escaper $escaper */
+
+$products = $block->getProducts();
+?>
+<div class="admin__data-grid-outer-wrap">
+    <div style="margin-bottom: 1.6rem;">
+        <strong><?= $escaper->escapeHtml($block->getCategoryName()) ?></strong>
+        &mdash;
+        <?= $escaper->escapeHtml(__('%1 product(s)', count($products))) ?>
+        &nbsp;·&nbsp;
+        <a href="<?= $escaper->escapeUrl($block->getCategoryEditUrl()) ?>"><?= $escaper->escapeHtml(__('Edit category')) ?></a>
+    </div>
+
+    <?php if (empty($products)): ?>
+        <div class="message message-notice notice">
+            <?= $escaper->escapeHtml(__('No products are assigned to this category.')) ?>
+        </div>
+    <?php else: ?>
+        <table class="data-grid">
+            <thead>
+                <tr class="data-grid-tr">
+                    <th class="data-grid-th"><?= $escaper->escapeHtml(__('SKU')) ?></th>
+                    <th class="data-grid-th"><?= $escaper->escapeHtml(__('Name')) ?></th>
+                    <th class="data-grid-th"><?= $escaper->escapeHtml(__('Action')) ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($products as $product): ?>
+                    <tr class="data-grid-tr">
+                        <td class="data-grid-td"><?= $escaper->escapeHtml($product['sku']) ?></td>
+                        <td class="data-grid-td"><?= $escaper->escapeHtml($product['name'] ?? $product['sku']) ?></td>
+                        <td class="data-grid-td">
+                            <a href="<?= $escaper->escapeUrl($block->getProductEditUrl((int)$product['entity_id'])) ?>">
+                                <?= $escaper->escapeHtml(__('Edit')) ?>
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+</div>

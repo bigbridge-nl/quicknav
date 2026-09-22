@@ -1,0 +1,238 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="BigBridge\QuickNav\Model\Search\SearchService">
+        <arguments>
+            <argument name="providers" xsi:type="array">
+                <item name="config_section" xsi:type="object">BigBridge\QuickNav\Model\Search\ConfigSectionProvider</item>
+                <item name="product" xsi:type="object">BigBridge\QuickNav\Model\Search\ProductProvider</item>
+                <item name="category" xsi:type="object">BigBridge\QuickNav\Model\Search\CategoryProvider</item>
+                <item name="store_scope" xsi:type="object">BigBridge\QuickNav\Model\Search\StoreScopeProvider</item>
+                <item name="customer" xsi:type="object">BigBridge\QuickNav\Model\Search\CustomerProvider</item>
+                <item name="order" xsi:type="object">BigBridge\QuickNav\Model\Search\OrderProvider</item>
+                <item name="cms_block" xsi:type="object">BigBridge\QuickNav\Model\Search\CmsBlockProvider</item>
+                <item name="cms_page" xsi:type="object">BigBridge\QuickNav\Model\Search\CmsPageProvider</item>
+                <item name="url_rewrite" xsi:type="object">BigBridge\QuickNav\Model\Search\UrlRewriteProvider</item>
+                <item name="search_term" xsi:type="object">BigBridge\QuickNav\Model\Search\SearchTermProvider</item>
+                <item name="product_attribute" xsi:type="object">BigBridge\QuickNav\Model\Search\ProductAttributeProvider</item>
+                <item name="attribute_set" xsi:type="object">BigBridge\QuickNav\Model\Search\AttributeSetProvider</item>
+                <item name="admin_user" xsi:type="object">BigBridge\QuickNav\Model\Search\AdminUserProvider</item>
+                <item name="admin_role" xsi:type="object">BigBridge\QuickNav\Model\Search\AdminRoleProvider</item>
+                <item name="customer_group" xsi:type="object">BigBridge\QuickNav\Model\Search\CustomerGroupProvider</item>
+                <item name="review" xsi:type="object">BigBridge\QuickNav\Model\Search\ReviewProvider</item>
+                <item name="cart_price_rule" xsi:type="object">BigBridge\QuickNav\Model\Search\CartPriceRuleProvider</item>
+                <item name="catalog_price_rule" xsi:type="object">BigBridge\QuickNav\Model\Search\CatalogPriceRuleProvider</item>
+                <item name="widget_instance" xsi:type="object">BigBridge\QuickNav\Model\Search\WidgetInstanceProvider</item>
+                <item name="email_template" xsi:type="object">BigBridge\QuickNav\Model\Search\EmailTemplateProvider</item>
+                <item name="newsletter_template" xsi:type="object">BigBridge\QuickNav\Model\Search\NewsletterTemplateProvider</item>
+                <item name="newsletter_subscriber" xsi:type="object">BigBridge\QuickNav\Model\Search\NewsletterSubscriberProvider</item>
+                <item name="custom_variable" xsi:type="object">BigBridge\QuickNav\Model\Search\CustomVariableProvider</item>
+                <item name="search_synonym" xsi:type="object">BigBridge\QuickNav\Model\Search\SearchSynonymProvider</item>
+                <item name="tax_rule" xsi:type="object">BigBridge\QuickNav\Model\Search\TaxRuleProvider</item>
+                <item name="tax_rate" xsi:type="object">BigBridge\QuickNav\Model\Search\TaxRateProvider</item>
+                <item name="integration" xsi:type="object">BigBridge\QuickNav\Model\Search\IntegrationProvider</item>
+                <item name="invoice" xsi:type="object">BigBridge\QuickNav\Model\Search\InvoiceProvider</item>
+                <item name="shipment" xsi:type="object">BigBridge\QuickNav\Model\Search\ShipmentProvider</item>
+                <item name="credit_memo" xsi:type="object">BigBridge\QuickNav\Model\Search\CreditMemoProvider</item>
+                <item name="admin_activity_log" xsi:type="object">BigBridge\QuickNav\Model\Search\AdminActivityLogProvider</item>
+                <item name="coupon_code" xsi:type="object">BigBridge\QuickNav\Model\Search\CouponCodeProvider</item>
+            </argument>
+            <!--
+                Config/menu/store-scope entries are harder to find by browsing the admin menu
+                than catalog entities are via their own grids, so they rank slightly above
+                catalog entities by default (feature-complete.md "Ranking & result shape").
+                Tune here, not in SearchService, so it never needs a code change.
+            -->
+            <argument name="typeWeights" xsi:type="array">
+                <item name="config_section" xsi:type="number">0</item>
+                <item name="config_group" xsi:type="number">0</item>
+                <item name="config_field" xsi:type="number">0</item>
+                <item name="menu_item" xsi:type="number">0</item>
+                <item name="store_view" xsi:type="number">0</item>
+                <item name="product" xsi:type="number">1</item>
+                <item name="category" xsi:type="number">1</item>
+                <item name="customer" xsi:type="number">1</item>
+                <item name="order" xsi:type="number">1</item>
+                <item name="cms_block" xsi:type="number">1</item>
+                <item name="cms_page" xsi:type="number">1</item>
+                <item name="url_rewrite" xsi:type="number">2</item>
+                <item name="search_term" xsi:type="number">2</item>
+                <item name="product_attribute" xsi:type="number">1</item>
+                <item name="attribute_set" xsi:type="number">1</item>
+                <item name="customer_group" xsi:type="number">1</item>
+                <item name="review" xsi:type="number">1</item>
+                <item name="admin_user" xsi:type="number">1</item>
+                <item name="admin_role" xsi:type="number">1</item>
+                <item name="cart_price_rule" xsi:type="number">2</item>
+                <item name="catalog_price_rule" xsi:type="number">2</item>
+                <item name="coupon_code" xsi:type="number">2</item>
+                <item name="widget_instance" xsi:type="number">2</item>
+                <item name="email_template" xsi:type="number">2</item>
+                <item name="newsletter_template" xsi:type="number">2</item>
+                <item name="newsletter_subscriber" xsi:type="number">2</item>
+                <item name="custom_variable" xsi:type="number">2</item>
+                <item name="search_synonym" xsi:type="number">2</item>
+                <item name="tax_rule" xsi:type="number">2</item>
+                <item name="tax_rate" xsi:type="number">2</item>
+                <item name="integration" xsi:type="number">2</item>
+                <item name="invoice" xsi:type="number">1</item>
+                <item name="shipment" xsi:type="number">1</item>
+                <item name="credit_memo" xsi:type="number">1</item>
+                <item name="admin_activity_log" xsi:type="number">2</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="bigbridge_quicknav_diagnose" xsi:type="object">BigBridge\QuickNav\Console\Command\DiagnoseSearchCommand</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="BigBridge\QuickNav\Model\Search\QueryLimiter">
+        <arguments>
+            <!--
+                keyword -> provider key (the same keys used
+                above). One place to add a new limiter keyword — no code change needed.
+            -->
+            <argument name="keywordMap" xsi:type="array">
+                <item name="config" xsi:type="string">config_section</item>
+                <item name="setting" xsi:type="string">config_section</item>
+                <item name="settings" xsi:type="string">config_section</item>
+                <item name="product" xsi:type="string">product</item>
+                <item name="products" xsi:type="string">product</item>
+                <item name="category" xsi:type="string">category</item>
+                <item name="categories" xsi:type="string">category</item>
+                <item name="cat" xsi:type="string">category</item>
+                <item name="store" xsi:type="string">store_scope</item>
+                <item name="stores" xsi:type="string">store_scope</item>
+                <item name="website" xsi:type="string">store_scope</item>
+                <item name="view" xsi:type="string">store_scope</item>
+                <item name="scope" xsi:type="string">store_scope</item>
+                <item name="customer" xsi:type="string">customer</item>
+                <item name="customers" xsi:type="string">customer</item>
+                <item name="order" xsi:type="string">order</item>
+                <item name="orders" xsi:type="string">order</item>
+                <item name="block" xsi:type="string">cms_block</item>
+                <item name="cmsblock" xsi:type="string">cms_block</item>
+                <item name="blocks" xsi:type="string">cms_block</item>
+                <item name="page" xsi:type="string">cms_page</item>
+                <item name="cmspage" xsi:type="string">cms_page</item>
+                <item name="pages" xsi:type="string">cms_page</item>
+                <item name="rewrite" xsi:type="string">url_rewrite</item>
+                <item name="rewrites" xsi:type="string">url_rewrite</item>
+                <item name="urlrewrite" xsi:type="string">url_rewrite</item>
+                <item name="search" xsi:type="string">search_term</item>
+                <item name="searchterm" xsi:type="string">search_term</item>
+                <item name="searchterms" xsi:type="string">search_term</item>
+                <item name="term" xsi:type="string">search_term</item>
+                <item name="terms" xsi:type="string">search_term</item>
+                <item name="attribute" xsi:type="string">product_attribute</item>
+                <item name="attributes" xsi:type="string">product_attribute</item>
+                <item name="attributeset" xsi:type="string">attribute_set</item>
+                <item name="attributesets" xsi:type="string">attribute_set</item>
+                <item name="user" xsi:type="string">admin_user</item>
+                <item name="users" xsi:type="string">admin_user</item>
+                <item name="role" xsi:type="string">admin_role</item>
+                <item name="roles" xsi:type="string">admin_role</item>
+                <item name="group" xsi:type="string">customer_group</item>
+                <item name="groups" xsi:type="string">customer_group</item>
+                <item name="review" xsi:type="string">review</item>
+                <item name="reviews" xsi:type="string">review</item>
+                <item name="cartrule" xsi:type="string">cart_price_rule</item>
+                <item name="cartrules" xsi:type="string">cart_price_rule</item>
+                <item name="coupon" xsi:type="string">cart_price_rule</item>
+                <item name="coupons" xsi:type="string">cart_price_rule</item>
+                <item name="couponcode" xsi:type="string">coupon_code</item>
+                <item name="couponcodes" xsi:type="string">coupon_code</item>
+                <item name="catalogrule" xsi:type="string">catalog_price_rule</item>
+                <item name="catalogrules" xsi:type="string">catalog_price_rule</item>
+                <item name="widget" xsi:type="string">widget_instance</item>
+                <item name="widgets" xsi:type="string">widget_instance</item>
+                <item name="email" xsi:type="string">email_template</item>
+                <item name="emails" xsi:type="string">email_template</item>
+                <item name="newsletter" xsi:type="string">newsletter_template</item>
+                <item name="newsletters" xsi:type="string">newsletter_template</item>
+                <item name="subscriber" xsi:type="string">newsletter_subscriber</item>
+                <item name="subscribers" xsi:type="string">newsletter_subscriber</item>
+                <item name="variable" xsi:type="string">custom_variable</item>
+                <item name="variables" xsi:type="string">custom_variable</item>
+                <item name="synonym" xsi:type="string">search_synonym</item>
+                <item name="synonyms" xsi:type="string">search_synonym</item>
+                <item name="taxrule" xsi:type="string">tax_rule</item>
+                <item name="taxrules" xsi:type="string">tax_rule</item>
+                <item name="taxrate" xsi:type="string">tax_rate</item>
+                <item name="taxrates" xsi:type="string">tax_rate</item>
+                <item name="integration" xsi:type="string">integration</item>
+                <item name="integrations" xsi:type="string">integration</item>
+                <item name="invoice" xsi:type="string">invoice</item>
+                <item name="invoices" xsi:type="string">invoice</item>
+                <item name="shipment" xsi:type="string">shipment</item>
+                <item name="shipments" xsi:type="string">shipment</item>
+                <item name="creditmemo" xsi:type="string">credit_memo</item>
+                <item name="creditmemos" xsi:type="string">credit_memo</item>
+                <item name="credit_memo" xsi:type="string">credit_memo</item>
+                <item name="activity" xsi:type="string">admin_activity_log</item>
+                <item name="activitylog" xsi:type="string">admin_activity_log</item>
+            </argument>
+            <argument name="providerLabels" xsi:type="array">
+                <item name="config_section" xsi:type="string">Settings</item>
+                <item name="product" xsi:type="string">Products</item>
+                <item name="category" xsi:type="string">Categories</item>
+                <item name="store_scope" xsi:type="string">Store Views</item>
+                <item name="customer" xsi:type="string">Customers</item>
+                <item name="order" xsi:type="string">Orders</item>
+                <item name="cms_block" xsi:type="string">CMS Blocks</item>
+                <item name="cms_page" xsi:type="string">CMS Pages</item>
+                <item name="url_rewrite" xsi:type="string">URL Rewrites</item>
+                <item name="search_term" xsi:type="string">Search Terms</item>
+                <item name="product_attribute" xsi:type="string">Product Attributes</item>
+                <item name="attribute_set" xsi:type="string">Attribute Sets</item>
+                <item name="admin_user" xsi:type="string">Admin Users</item>
+                <item name="admin_role" xsi:type="string">Admin Roles</item>
+                <item name="customer_group" xsi:type="string">Customer Groups</item>
+                <item name="review" xsi:type="string">Reviews</item>
+                <item name="cart_price_rule" xsi:type="string">Cart Price Rules</item>
+                <item name="catalog_price_rule" xsi:type="string">Catalog Price Rules</item>
+                <item name="widget_instance" xsi:type="string">Widgets</item>
+                <item name="email_template" xsi:type="string">Email Templates</item>
+                <item name="newsletter_template" xsi:type="string">Newsletter Templates</item>
+                <item name="newsletter_subscriber" xsi:type="string">Newsletter Subscribers</item>
+                <item name="custom_variable" xsi:type="string">Custom Variables</item>
+                <item name="search_synonym" xsi:type="string">Search Synonyms</item>
+                <item name="tax_rule" xsi:type="string">Tax Rules</item>
+                <item name="tax_rate" xsi:type="string">Tax Rates</item>
+                <item name="integration" xsi:type="string">Integrations</item>
+                <item name="invoice" xsi:type="string">Invoices</item>
+                <item name="shipment" xsi:type="string">Shipments</item>
+                <item name="credit_memo" xsi:type="string">Credit Memos</item>
+                <item name="admin_activity_log" xsi:type="string">Admin Activity</item>
+                <item name="coupon_code" xsi:type="string">Coupon Codes</item>
+            </argument>
+        </arguments>
+    </type>
+    <virtualType name="BigBridge\QuickNav\Model\Indexer\ProductLargeDatasetIndexer" type="BigBridge\QuickNav\Model\Indexer\LargeDatasetIndexer">
+        <arguments>
+            <argument name="compiler" xsi:type="object">BigBridge\QuickNav\Model\Index\ProductDocumentCompiler</argument>
+            <argument name="entityType" xsi:type="string">product</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="BigBridge\QuickNav\Model\Indexer\CustomerLargeDatasetIndexer" type="BigBridge\QuickNav\Model\Indexer\LargeDatasetIndexer">
+        <arguments>
+            <argument name="compiler" xsi:type="object">BigBridge\QuickNav\Model\Index\CustomerDocumentCompiler</argument>
+            <argument name="entityType" xsi:type="string">customer</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="BigBridge\QuickNav\Model\Indexer\OrderLargeDatasetIndexer" type="BigBridge\QuickNav\Model\Indexer\LargeDatasetIndexer">
+        <arguments>
+            <argument name="compiler" xsi:type="object">BigBridge\QuickNav\Model\Index\OrderDocumentCompiler</argument>
+            <argument name="entityType" xsi:type="string">order</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="BigBridge\QuickNav\Model\Indexer\CouponCodeLargeDatasetIndexer" type="BigBridge\QuickNav\Model\Indexer\LargeDatasetIndexer">
+        <arguments>
+            <argument name="compiler" xsi:type="object">BigBridge\QuickNav\Model\Index\CouponCodeDocumentCompiler</argument>
+            <argument name="entityType" xsi:type="string">coupon_code</argument>
+        </arguments>
+    </virtualType>
+</config>

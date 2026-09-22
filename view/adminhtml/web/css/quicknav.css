@@ -1,0 +1,779 @@
+[x-cloak] {
+    display: none !important;
+}
+
+/* Keyboard page typeahead: yellow marks the matching text without changing layout or focus. */
+.quicknav-page-highlight {
+    display: inline;
+    margin: 0;
+    border: 0;
+    background-color: #fef08a;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+}
+
+/* The active match uses an out-of-flow pseudo-element, so its blue outline never changes
+   the dimensions or line wrapping of the highlighted item. */
+.quicknav-page-match--active {
+    position: relative;
+    z-index: 1;
+}
+
+.quicknav-page-match--active::after {
+    position: absolute;
+    inset: -2px;
+    border: 2px solid #1e3a8a;
+    border-radius: inherit;
+    content: '';
+    pointer-events: none;
+}
+
+.quicknav-widget {
+    position: relative;
+    width: 100%;
+    /*
+     * one shared per-entity-type accent color, referenced by both the live-dropdown
+     * type icon (.quicknav-widget__type-icon--*) and the personalization tiles
+     * (.quicknav-widget__tile-icon--*) so a type never renders in two different colors
+     * depending on which view it's shown in. Deliberately none of these match the pin-toggle
+     * gold (#f59e0b) — that color is reserved for "this is pinned" and must stay
+     * unambiguous.
+     */
+    --quicknav-color-product: #2563eb;
+    --quicknav-color-category: #16a34a;
+    --quicknav-color-config_section: #475569;
+    --quicknav-color-config_group: #7c3aed;
+    --quicknav-color-menu_item: #0891b2;
+    --quicknav-color-customer: #db2777;
+    --quicknav-color-order: #ea580c;
+    --quicknav-color-cms_block: #0d9488;
+    --quicknav-color-cms_page: #4f46e5;
+    --quicknav-color-url_rewrite: #0284c7;
+    --quicknav-color-search_term: #e11d48;
+    --quicknav-color-store_view: #9333ea;
+    --quicknav-color-product_attribute: #65a30d;
+    --quicknav-color-attribute_set: #a16207;
+    --quicknav-color-admin_user: #0369a1;
+    --quicknav-color-admin_role: #b91c1c;
+    --quicknav-color-customer_group: #a21caf;
+    --quicknav-color-review: #eab308;
+    --quicknav-color-cart_price_rule: #f97316;
+    --quicknav-color-catalog_price_rule: #c2410c;
+    --quicknav-color-widget_instance: #059669;
+    --quicknav-color-email_template: #6366f1;
+    --quicknav-color-newsletter_template: #d97706;
+    --quicknav-color-newsletter_subscriber: #0e7490;
+    --quicknav-color-custom_variable: #4d7c0f;
+    --quicknav-color-search_synonym: #7e22ce;
+    --quicknav-color-tax_rule: #78350f;
+    --quicknav-color-tax_rate: #15803d;
+    --quicknav-color-integration: #1d4ed8;
+    --quicknav-color-invoice: #be123c;
+    --quicknav-color-shipment: #166534;
+    --quicknav-color-credit_memo: #dc2626;
+    --quicknav-color-admin_activity_log: #57534e;
+    --quicknav-color-coupon_code: #0f766e;
+}
+
+.quicknav-widget__input-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.quicknav-widget__icon {
+    position: absolute;
+    left: 12px;
+    width: 18px;
+    height: 18px;
+    color: #6b7280;
+    pointer-events: none;
+}
+
+/*
+ * Scoped through the full ancestor chain (three classes) rather than a bare
+ * `.quicknav-widget__input`: the admin theme's own
+ * `.widgets-container input:not([type="radio"], [type="checkbox"])` reset has specificity
+ * (0,2,1), which beats a single class selector (0,1,0) regardless of source order and was
+ * silently clobbering this padding.
+ */
+.quicknav-widget .quicknav-widget__input-row .quicknav-widget__input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 34px 10px 38px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.25;
+}
+
+.quicknav-widget .quicknav-widget__input-row .quicknav-widget__input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Sits inside the input row itself (absolute, right-aligned) rather than as its own row —
+   toggling the chip row's visibility shouldn't grow the widget by a row of its own. */
+.quicknav-widget__filter-toggle {
+    position: absolute;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.quicknav-widget__filter-toggle:hover {
+    color: #374151;
+    background-color: #f3f4f6;
+}
+
+.quicknav-widget__filter-toggle--active {
+    color: #2563eb;
+}
+
+/* type-filter chip row. */
+.quicknav-widget__type-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.quicknav-widget__filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px 4px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background-color: #fff;
+    color: #4b5563;
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.quicknav-widget__filter-chip:hover {
+    border-color: #d1d5db;
+    background-color: #f9fafb;
+}
+
+.quicknav-widget__filter-chip-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+}
+
+.quicknav-widget__filter-chip-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Active state: filled with that type's own accent color — same palette everywhere. */
+.quicknav-widget__filter-chip--active {
+    border-color: transparent;
+    color: #fff;
+}
+
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--product { background-color: var(--quicknav-color-product); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--category { background-color: var(--quicknav-color-category); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--config_section { background-color: var(--quicknav-color-config_section); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--config_group { background-color: var(--quicknav-color-config_group); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--menu_item { background-color: var(--quicknav-color-menu_item); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--customer { background-color: var(--quicknav-color-customer); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--order { background-color: var(--quicknav-color-order); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--cms_block { background-color: var(--quicknav-color-cms_block); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--cms_page { background-color: var(--quicknav-color-cms_page); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--url_rewrite { background-color: var(--quicknav-color-url_rewrite); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--search_term { background-color: var(--quicknav-color-search_term); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--store_view { background-color: var(--quicknav-color-store_view); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--product_attribute { background-color: var(--quicknav-color-product_attribute); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--attribute_set { background-color: var(--quicknav-color-attribute_set); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--admin_user { background-color: var(--quicknav-color-admin_user); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--admin_role { background-color: var(--quicknav-color-admin_role); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--customer_group { background-color: var(--quicknav-color-customer_group); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--review { background-color: var(--quicknav-color-review); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--cart_price_rule { background-color: var(--quicknav-color-cart_price_rule); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--catalog_price_rule { background-color: var(--quicknav-color-catalog_price_rule); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--widget_instance { background-color: var(--quicknav-color-widget_instance); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--email_template { background-color: var(--quicknav-color-email_template); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--newsletter_template { background-color: var(--quicknav-color-newsletter_template); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--newsletter_subscriber { background-color: var(--quicknav-color-newsletter_subscriber); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--custom_variable { background-color: var(--quicknav-color-custom_variable); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--search_synonym { background-color: var(--quicknav-color-search_synonym); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--tax_rule { background-color: var(--quicknav-color-tax_rule); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--tax_rate { background-color: var(--quicknav-color-tax_rate); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--integration { background-color: var(--quicknav-color-integration); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--invoice { background-color: var(--quicknav-color-invoice); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--shipment { background-color: var(--quicknav-color-shipment); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--credit_memo { background-color: var(--quicknav-color-credit_memo); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--admin_activity_log { background-color: var(--quicknav-color-admin_activity_log); }
+.quicknav-widget__filter-chip--active.quicknav-widget__filter-chip--coupon_code { background-color: var(--quicknav-color-coupon_code); }
+
+/*
+ * No max-height/overflow here: the widget's own grid tile grows to fit this list (see
+ * expandWidgetToFitResults() in js/widget/quicknav.phtml), up to a viewport-based cap. Once
+ * that cap is hit, `.widget-main-wrapper` (framework-owned, overflow: auto) takes over
+ * scrolling — this list should never scroll independently of the widget around it.
+ */
+.quicknav-widget__results {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+}
+
+.quicknav-widget__status {
+    padding: 10px 12px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.quicknav-widget__result {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.quicknav-widget__result:not(:last-child) {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.quicknav-widget__result:hover,
+.quicknav-widget__result--highlighted {
+    background-color: #eff6ff;
+}
+
+/*
+ * Keyboard navigation moves REAL focus onto the row (see highlightNext()/highlightPrevious()
+ * in js/widget/quicknav.phtml) — deliberately styled off native :focus, not off the
+ * `--highlighted` class above, so this can never end up applied to a different row than the
+ * one actually focused (which a separately-tracked JS variable could, and once did, drift out
+ * of sync with — e.g. a stationary mouse cursor re-triggering `@mouseenter` as the list
+ * reflows while keyboard focus had already moved elsewhere). Deliberately more saturated than
+ * plain hover, plus a left accent bar, so it reads as clearly "the current one" at a glance.
+ */
+.quicknav-widget__result:focus {
+    outline: none;
+    background-color: #bfdbfe;
+    box-shadow: inset 3px 0 0 0 #2563eb;
+}
+
+/* leading type icon (or product thumbnail) in the live results dropdown. */
+.quicknav-widget__type-icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.quicknav-widget__type-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.quicknav-widget__type-image {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.quicknav-widget__type-icon--product { color: var(--quicknav-color-product); }
+.quicknav-widget__type-icon--category { color: var(--quicknav-color-category); }
+.quicknav-widget__type-icon--config_section { color: var(--quicknav-color-config_section); }
+.quicknav-widget__type-icon--config_group { color: var(--quicknav-color-config_group); }
+.quicknav-widget__type-icon--menu_item { color: var(--quicknav-color-menu_item); }
+.quicknav-widget__type-icon--customer { color: var(--quicknav-color-customer); }
+.quicknav-widget__type-icon--order { color: var(--quicknav-color-order); }
+.quicknav-widget__type-icon--cms_block { color: var(--quicknav-color-cms_block); }
+.quicknav-widget__type-icon--cms_page { color: var(--quicknav-color-cms_page); }
+.quicknav-widget__type-icon--url_rewrite { color: var(--quicknav-color-url_rewrite); }
+.quicknav-widget__type-icon--search_term { color: var(--quicknav-color-search_term); }
+.quicknav-widget__type-icon--store_view { color: var(--quicknav-color-store_view); }
+.quicknav-widget__type-icon--product_attribute { color: var(--quicknav-color-product_attribute); }
+.quicknav-widget__type-icon--attribute_set { color: var(--quicknav-color-attribute_set); }
+.quicknav-widget__type-icon--admin_user { color: var(--quicknav-color-admin_user); }
+.quicknav-widget__type-icon--admin_role { color: var(--quicknav-color-admin_role); }
+.quicknav-widget__type-icon--customer_group { color: var(--quicknav-color-customer_group); }
+.quicknav-widget__type-icon--review { color: var(--quicknav-color-review); }
+.quicknav-widget__type-icon--cart_price_rule { color: var(--quicknav-color-cart_price_rule); }
+.quicknav-widget__type-icon--catalog_price_rule { color: var(--quicknav-color-catalog_price_rule); }
+.quicknav-widget__type-icon--widget_instance { color: var(--quicknav-color-widget_instance); }
+.quicknav-widget__type-icon--email_template { color: var(--quicknav-color-email_template); }
+.quicknav-widget__type-icon--newsletter_template { color: var(--quicknav-color-newsletter_template); }
+.quicknav-widget__type-icon--newsletter_subscriber { color: var(--quicknav-color-newsletter_subscriber); }
+.quicknav-widget__type-icon--custom_variable { color: var(--quicknav-color-custom_variable); }
+.quicknav-widget__type-icon--search_synonym { color: var(--quicknav-color-search_synonym); }
+.quicknav-widget__type-icon--tax_rule { color: var(--quicknav-color-tax_rule); }
+.quicknav-widget__type-icon--tax_rate { color: var(--quicknav-color-tax_rate); }
+.quicknav-widget__type-icon--integration { color: var(--quicknav-color-integration); }
+.quicknav-widget__type-icon--invoice { color: var(--quicknav-color-invoice); }
+.quicknav-widget__type-icon--shipment { color: var(--quicknav-color-shipment); }
+.quicknav-widget__type-icon--credit_memo { color: var(--quicknav-color-credit_memo); }
+.quicknav-widget__type-icon--admin_activity_log { color: var(--quicknav-color-admin_activity_log); }
+.quicknav-widget__type-icon--coupon_code { color: var(--quicknav-color-coupon_code); }
+
+.quicknav-widget__result-main {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+}
+
+.quicknav-widget__result-label {
+    overflow: hidden;
+    color: #111827;
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.quicknav-widget__result-context {
+    max-width: 45%;
+    flex-shrink: 0;
+    overflow: hidden;
+    color: #6b7280;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.quicknav-widget__result-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background-color: #ecfdf5;
+    color: #047857;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.quicknav-widget__result-count {
+    margin-left: 6px;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.quicknav-widget__result-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 4px;
+}
+
+.quicknav-widget__result-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.quicknav-widget__result-action:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    background-color: #eff6ff;
+}
+
+.quicknav-widget__scope-picker,
+.quicknav-widget__storefront-picker {
+    position: relative;
+}
+
+.quicknav-widget__scope-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    max-height: 280px;
+    margin: 0;
+    padding: 4px 0;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.quicknav-widget__scope-menu-item button {
+    display: block;
+    width: 100%;
+    padding: 6px 12px;
+    border: none;
+    background: none;
+    color: #111827;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.quicknav-widget__scope-menu-item button:hover {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.quicknav-widget__scope-menu-item--website button {
+    padding-left: 20px;
+    font-weight: 500;
+}
+
+.quicknav-widget__scope-menu-item--store button {
+    padding-left: 32px;
+    color: #4b5563;
+}
+
+.quicknav-widget__limiter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    background-color: #fffbeb;
+    color: #92400e;
+    font-size: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.quicknav-widget__opensearch-warning {
+    padding: 8px 12px;
+    background-color: #fffbeb;
+    color: #92400e;
+    font-size: 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.quicknav-widget__opensearch-warning-link {
+    color: #2563eb;
+    font-size: 12px;
+    text-decoration: underline;
+}
+
+.quicknav-widget__expand-link {
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.quicknav-widget__hint {
+    margin: 8px 0 0;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* popup-blocker fallback — never a native dialog, matching this widget's own house style. */
+.quicknav-widget__popup-blocked {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 8px 12px;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    background-color: #fffbeb;
+    color: #92400e;
+    font-size: 12px;
+}
+
+.quicknav-widget__popup-blocked a {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.quicknav-widget__popup-blocked-dismiss {
+    margin-left: auto;
+    padding: 0 4px;
+    border: none;
+    background: none;
+    color: #92400e;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.quicknav-widget__pin-toggle {
+    color: #d1d5db;
+}
+
+.quicknav-widget__pin-toggle:hover {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background-color: #fffbeb;
+}
+
+.quicknav-widget__pin-toggle--pinned,
+.quicknav-widget__pin-toggle--pinned svg {
+    color: #f59e0b;
+    fill: currentColor;
+}
+
+.quicknav-widget__personalization-section:not(:last-child) {
+    margin-bottom: 8px;
+}
+
+.quicknav-widget__personalization-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 8px 0 4px;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.quicknav-widget__personalization-heading-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/*
+ * deliberately part of the heading row, not the tile/row grid below it — far enough
+ * from any individual item's own unpin star that the two can't be misclicked for each other.
+ */
+.quicknav-widget__personalization-clear {
+    padding: 0;
+    border: none;
+    background: none;
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+}
+
+.quicknav-widget__personalization-clear:hover {
+    color: #ef4444;
+    text-decoration: underline;
+}
+
+.quicknav-widget__tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 8px;
+}
+
+.quicknav-widget__tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.quicknav-widget__tile:hover {
+    border-color: #e5e7eb;
+    background-color: #eff6ff;
+}
+
+.quicknav-widget__tile-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    overflow: hidden;
+    border-radius: 6px;
+    background-color: #f3f4f6;
+    color: #6b7280;
+}
+
+.quicknav-widget__tile-icon img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+/* tiles reuse the exact same per-type colors as the live dropdown's type icon. */
+.quicknav-widget__tile-icon--product { color: var(--quicknav-color-product); }
+.quicknav-widget__tile-icon--category { color: var(--quicknav-color-category); }
+.quicknav-widget__tile-icon--config_section { color: var(--quicknav-color-config_section); }
+.quicknav-widget__tile-icon--config_group { color: var(--quicknav-color-config_group); }
+.quicknav-widget__tile-icon--menu_item { color: var(--quicknav-color-menu_item); }
+.quicknav-widget__tile-icon--customer { color: var(--quicknav-color-customer); }
+.quicknav-widget__tile-icon--order { color: var(--quicknav-color-order); }
+.quicknav-widget__tile-icon--cms_block { color: var(--quicknav-color-cms_block); }
+.quicknav-widget__tile-icon--cms_page { color: var(--quicknav-color-cms_page); }
+.quicknav-widget__tile-icon--url_rewrite { color: var(--quicknav-color-url_rewrite); }
+.quicknav-widget__tile-icon--search_term { color: var(--quicknav-color-search_term); }
+.quicknav-widget__tile-icon--store_view { color: var(--quicknav-color-store_view); }
+.quicknav-widget__tile-icon--product_attribute { color: var(--quicknav-color-product_attribute); }
+.quicknav-widget__tile-icon--attribute_set { color: var(--quicknav-color-attribute_set); }
+.quicknav-widget__tile-icon--admin_user { color: var(--quicknav-color-admin_user); }
+.quicknav-widget__tile-icon--admin_role { color: var(--quicknav-color-admin_role); }
+.quicknav-widget__tile-icon--customer_group { color: var(--quicknav-color-customer_group); }
+.quicknav-widget__tile-icon--review { color: var(--quicknav-color-review); }
+.quicknav-widget__tile-icon--cart_price_rule { color: var(--quicknav-color-cart_price_rule); }
+.quicknav-widget__tile-icon--catalog_price_rule { color: var(--quicknav-color-catalog_price_rule); }
+.quicknav-widget__tile-icon--widget_instance { color: var(--quicknav-color-widget_instance); }
+.quicknav-widget__tile-icon--email_template { color: var(--quicknav-color-email_template); }
+.quicknav-widget__tile-icon--newsletter_template { color: var(--quicknav-color-newsletter_template); }
+.quicknav-widget__tile-icon--newsletter_subscriber { color: var(--quicknav-color-newsletter_subscriber); }
+.quicknav-widget__tile-icon--custom_variable { color: var(--quicknav-color-custom_variable); }
+.quicknav-widget__tile-icon--search_synonym { color: var(--quicknav-color-search_synonym); }
+.quicknav-widget__tile-icon--tax_rule { color: var(--quicknav-color-tax_rule); }
+.quicknav-widget__tile-icon--tax_rate { color: var(--quicknav-color-tax_rate); }
+.quicknav-widget__tile-icon--integration { color: var(--quicknav-color-integration); }
+.quicknav-widget__tile-icon--invoice { color: var(--quicknav-color-invoice); }
+.quicknav-widget__tile-icon--shipment { color: var(--quicknav-color-shipment); }
+.quicknav-widget__tile-icon--credit_memo { color: var(--quicknav-color-credit_memo); }
+.quicknav-widget__tile-icon--admin_activity_log { color: var(--quicknav-color-admin_activity_log); }
+.quicknav-widget__tile-icon--coupon_code { color: var(--quicknav-color-coupon_code); }
+
+.quicknav-widget__tile-label {
+    display: -webkit-box;
+    overflow: hidden;
+    width: 100%;
+    color: #374151;
+    font-size: 11px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.quicknav-widget__tile-unpin {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-color: #fff;
+    color: #f59e0b;
+    fill: currentColor;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px #e5e7eb;
+}
+
+/*
+ * `position: relative` makes this div (rather than the framework's own stretchy
+ * `.widget-main-wrapper` ancestor) the credit's positioning context, so "bottom: 8px" below
+ * resolves against real content height, not whatever height the framework currently has the
+ * tile at. The padding-bottom reserves clearance for the credit itself: it's absolutely
+ * positioned (out of flow), so without this, expandWidgetToFitResults()'s content measurement
+ * (this div's own scrollHeight) wouldn't account for it at all, and a search result's last row
+ * could land directly under/behind the credit line once the tile is sized to fit content
+ * exactly.
+ */
+.quicknav-widget-wrapper {
+    position: relative;
+    padding-bottom: 32px;
+}
+
+/* Dashboard-widget-only "powered by" credit, pinned to the tile's bottom-right corner. */
+.quicknav-widget__branding {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    display: flex;
+}
+
+.quicknav-widget__branding-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.quicknav-widget__branding-link:hover {
+    color: #6b7280;
+}
+
+/*
+ * bigbridge_logo.svg is BigBridge's full "bigbridge" wordmark, verbatim from the 117x25 lockup
+ * bigbridge.nl itself serves from its header (the same wordmark BigBridge already ships as a
+ * raster elsewhere, e.g. BigBridge_GichaaOrders::images/bigbridge_logo.png). Applied as a CSS
+ * mask rather than an <img> so the one vector asset can be recolored per color scheme instead
+ * of shipping separate light/dark files: BigBridge's brand navy (#001745, sampled from
+ * bigbridge.nl's own body copy/hero background) for light mode, white for dark, so the mark
+ * always sits at the optimal-contrast end rather than staying navy-on-navy or white-on-white.
+ */
+.quicknav-widget__branding-logo {
+    display: inline-block;
+    width: 75px;
+    height: 16px;
+    background-color: #001745;
+    -webkit-mask-image: url('../images/bigbridge_logo.svg');
+    mask-image: url('../images/bigbridge_logo.svg');
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    opacity: 0.85;
+}
+
+.quicknav-widget__branding-link:hover .quicknav-widget__branding-logo {
+    opacity: 1;
+}
+
+/*
+ * Deliberately NOT `@media (prefers-color-scheme: dark)`: this admin theme has no dark visual
+ * mode of its own (confirmed — no `dark:` Tailwind variants anywhere in
+ * hyva-themes/commerce-theme-adminhtml), so that media query tracks the OS/browser preference
+ * while the page background stays light regardless, which would silently turn the logo white
+ * on a still-light card. The one real "dark admin" mechanism in this codebase is the Dark
+ * Reader browser extension, which BigBridge's own modules already target this same way (see
+ * BigBridge_GichaaOrders::css/admin.css) — Dark Reader is what actually repaints the page dark,
+ * so it's the only trigger that should flip this logo to white.
+ */
+html[data-darkreader-scheme="dark"] .quicknav-widget__branding-logo {
+    background-color: #ffffff;
+}

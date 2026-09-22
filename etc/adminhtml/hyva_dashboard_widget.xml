@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Hyva_AdminDashboardApi:etc/adminhtml/hyva_dashboard_widget.xsd">
+    <widget id="quicknav">
+        <title>QuickNav</title>
+        <class>BigBridge\QuickNav\Model\Widget\QuickNav</class>
+        <category>other</category>
+        <tags>navigation,search,settings,products,categories,stores,quicknav</tags>
+        <display_type>template</display_type>
+        <template>BigBridge_QuickNav::widget/quicknav.phtml</template>
+        <icon>search</icon>
+        <min_height>4</min_height>
+        <min_width>2</min_width>
+    </widget>
+</config>

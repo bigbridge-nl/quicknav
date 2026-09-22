@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <!--
+        Alpine.js is not loaded on every admin page today — only the Hyva Admin Dashboard
+        controller page turns it on (see hyva_adminhtml_alpine.xml's only other consumer,
+        dashboard_index_index.xml). The global overlay's header icon needs Alpine everywhere, so
+        this handle takes on that responsibility itself here. `<update>` doesn't support
+        `ifconfig`, so this one inclusion stays unconditional (harmless: an idle library load)
+        even when the config toggle below is off; the actual trigger icon/dialog/keyboard-listener
+        markup that uses it is what's really gated.
+    -->
+    <update handle="hyva_adminhtml_alpine"/>
+    <head>
+        <css src="BigBridge_QuickNav::css/quicknav.css"/>
+        <css src="BigBridge_QuickNav::css/quicknav-access.css"/>
+    </head>
+    <body>
+        <referenceContainer name="header.inner.right">
+            <!--
+                header.inner.right is a plain container (no template of its own), so a sibling
+                block here auto-renders alongside the trigger button without needing an explicit
+                getChildHtml call — same pattern the dashboard widget block uses.
+            -->
+            <block class="BigBridge\QuickNav\Block\Adminhtml\AccessTrigger"
+                   name="bigbridge_quicknav_access_trigger"
+                   template="BigBridge_QuickNav::access/trigger.phtml"
+                   after="global.search"
+                   ifconfig="quicknav_access/general/enabled"/>
+            <!--
+                Reused as-is: the shared search-panel.phtml partial's x-data="quickNavWidget(...)"
+                factory is defined by this same template the dashboard widget uses for its own
+                widget (see hyva_dashboard_widget.xml). That layout handle only merges on the
+                dashboard controller page, so outside the dashboard this function is otherwise
+                never defined — the overlay needs it everywhere it can open.
+            -->
+            <block name="bigbridge_quicknav_access_widget_js"
+                   template="BigBridge_QuickNav::js/widget/quicknav.phtml"
+                   after="bigbridge_quicknav_access_trigger"
+                   ifconfig="quicknav_access/general/enabled"/>
+            <block name="bigbridge_quicknav_access_trigger_js"
+                   template="BigBridge_QuickNav::access/js/access.phtml"
+                   after="bigbridge_quicknav_access_widget_js"
+                   ifconfig="quicknav_access/general/enabled"/>
+        </referenceContainer>
+        <referenceContainer name="before.body.end">
+            <!-- Reused as-is from Hyva_Theme (free/community) — same MIT-licensed directive
+                 the paid Hyva Admin Dashboard framework also ships its own copy of. -->
+            <block name="bigbridge_quicknav_access_htmldialog"
+                   template="Hyva_Theme::page/js/plugins/v3/htmldialog.phtml"
+                   ifconfig="quicknav_access/general/enabled"/>
+        </referenceContainer>
+    </body>
+</page>
