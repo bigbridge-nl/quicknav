@@ -7,5 +7,10 @@
                 <enabled>1</enabled>
             </general>
         </quicknav_access>
+        <quicknav_search>
+            <opensearch>
+                <index_prefix>bigbridge_quicknav</index_prefix>
+            </opensearch>
+        </quicknav_search>
     </default>
 </config>

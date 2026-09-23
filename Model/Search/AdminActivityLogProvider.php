@@ -79,15 +79,17 @@ class AdminActivityLogProvider implements SearchProviderInterface
         $itemName = (string) ($row['item_name'] ?? '');
         $label = $itemName !== '' ? $itemName : $fullaction;
         $createdAt = (string) ($row['created_at'] ?? '');
+        $entityId = (string) ($row['entity_id'] ?? '');
 
         // created_at must stay in the context: repeated identical actions share username,
         // module, fullaction and item_name, and there is no per-record `url` to tell them
-        // apart either, so without it they all hash to the same result id.
+        // apart either. created_at alone is not enough either: it is second-precision, and two
+        // rapid saves of the same field land in the same second, so entity_id is required too.
         return new SearchResult(
             entityType: self::ENTITY_TYPE,
             iconKey: self::ICON_KEY,
             label: $label,
-            context: $username.' · '.$module.' · '.$createdAt,
+            context: $username.' · '.$module.' · '.$createdAt.' · #'.$entityId,
             url: $this->backendUrl->getUrl('adminactivity/activity/index'),
             matchTier: $this->matchTier(
                 mb_strtolower($username),

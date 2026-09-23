@@ -10,12 +10,8 @@ use Magento\Framework\Setup\Patch\NonTransactionableInterface;
 
 /**
  * mview only captures changes from the moment its triggers are installed, so without this
- * backfill the indexes stay empty until something touches every row.
- *
- * NonTransactionableInterface is required: the customer_grid reindex swaps customer_grid_flat
- * with CREATE/DROP/RENAME TABLE, and MySQL commits implicitly on DDL. Inside the patch applier's
- * wrapping transaction that leaves the connection's cached table metadata stale, and the next
- * SELECT fails with "1412 Table definition has changed, please retry transaction".
+ * backfill the indexes stay empty until something touches every row. NonTransactionableInterface
+ * avoids MySQL error 1412 from customer_grid's own DDL-issuing reindex.
  */
 class BackfillLargeDatasetIndexes implements DataPatchInterface, NonTransactionableInterface
 {
@@ -40,6 +36,8 @@ class BackfillLargeDatasetIndexes implements DataPatchInterface, NonTransactiona
 
     /**
      * PatchInterface declares `@return $this`, so this cannot narrow the return type to void.
+     * reindexAll() is deprecated for ActionInterface::executeFull(), but that skips the
+     * working-state lock and status update reindexAll() does — indexers would stay "Invalid".
      */
     public function apply(): self
     {

@@ -66,12 +66,13 @@ class OpenSearchConfig
         if ($this->usesPlatformConnection()) {
             $platform = (string) $this->scopeConfig->getValue(self::XML_PATH_PLATFORM_HOST);
 
-            return $platform !== '' ? $platform : '127.0.0.1';
+            return $platform !== '' ? $platform : 'localhost';
         }
 
         $own = (string) $this->scopeConfig->getValue(self::XML_PATH_HOST);
 
-        return $own !== '' ? $own : '127.0.0.1';
+        // Matches module-open-search's own config.xml default for opensearch_server_hostname.
+        return $own !== '' ? $own : 'localhost';
     }
 
     public function getPort(): int

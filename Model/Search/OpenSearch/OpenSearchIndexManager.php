@@ -5,12 +5,9 @@ declare(strict_types=1);
 namespace BigBridge\QuickNav\Model\Search\OpenSearch;
 
 /**
- * One shared index across all entity types, discriminated by `entity_type`. `_id` is
- * "{entity_type}#{entity_id}" so id spaces cannot collide between types.
- *
- * Every public method is fail-soft and returns silently without a client: a write must never
- * throw into an entity save. Bulk and deleteByQuery responses are not inspected for
- * partial failures either — the reindex cron is what corrects a stale document.
+ * One shared index across all entity types, `_id` "{entity_type}#{entity_id}". Every public
+ * method is fail-soft, returning silently without a client, since a write must never throw into
+ * an entity save; the reindex cron corrects any document a swallowed failure left stale.
  */
 class OpenSearchIndexManager
 {

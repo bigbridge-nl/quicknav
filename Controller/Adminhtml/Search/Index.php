@@ -12,10 +12,9 @@ use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
 
 /**
- * Must stay POST + form key, never GET + admin secret key: the widget's `search_url` is captured
- * once into Hyva's cached widget config, and a secret key is bound to the session that rendered
- * that cache entry, so it goes stale for every later session. The form key is read fresh from
- * `window.FORM_KEY`, which the admin layout re-renders on every full page load.
+ * Must stay POST + form key, never GET + admin secret key: a secret key is bound to the session
+ * that rendered Hyva's cached `search_url`, so it goes stale for every later session. The form
+ * key is read fresh from `window.FORM_KEY` on every page load instead.
  */
 class Index extends Action implements HttpPostActionInterface
 {

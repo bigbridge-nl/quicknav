@@ -12,11 +12,9 @@ use Magento\Framework\App\RequestInterface;
 use Magento\User\Model\UserFactory;
 
 /**
- * Persists the QuickNav highlighting override from "Account Information" onto the current
- * admin's own admin_user.extra. The core Save controller only ever reads its fixed set of
- * fields (username, name, email, password, locale), so this field would otherwise be silently
- * dropped. Runs independently of the core save so an identity-check failure there never blocks
- * a preference this harmless.
+ * Persists the highlighting override onto admin_user.extra: the core Save controller only reads
+ * its own fixed field set, so this would otherwise be silently dropped. Runs independently of the
+ * core save so an identity-check failure there never blocks a preference this harmless.
  */
 class SavePageHighlightingFieldPlugin
 {

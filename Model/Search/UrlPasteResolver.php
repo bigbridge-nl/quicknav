@@ -15,13 +15,9 @@ use Magento\UrlRewrite\Model\UrlFinderInterface;
 use Magento\UrlRewrite\Service\V1\Data\UrlRewrite;
 
 /**
- * Resolves a pasted storefront URL to its entity through `url_rewrite`. Storefront URLs only —
- * admin deep links are not parsed.
- *
- * The ACL check before building a result is required, not defence in depth: SearchService runs
- * this ahead of every provider and returns its result immediately, and url_rewrite rows persist
- * for disabled and hidden entities, so skipping it would let any role holding only
- * Magento_Backend::admin read names, SKUs and breadcrumbs it has no resource for.
+ * Resolves a pasted storefront URL to its entity through `url_rewrite`; admin deep links are not
+ * parsed. The ACL check before building a result is required, not defence in depth: rows persist
+ * for disabled and hidden entities, so skipping it would leak them to any role holding admin.
  */
 class UrlPasteResolver
 {

@@ -11,10 +11,8 @@ use Magento\Framework\AuthorizationInterface;
 
 /**
  * Bulk auto-generated campaigns reach tens of thousands of codes per rule, so the un-narrowed
- * LIKE scan is genuinely expensive here rather than merely suboptimal.
- *
- * Results link to the parent rule's edit page: there is no standalone coupon edit screen, which
- * is also why this shares CartPriceRuleProvider's ACL resource.
+ * LIKE scan is genuinely expensive here. Results link to the parent rule's edit page, since there
+ * is no standalone coupon edit screen — also why this shares CartPriceRuleProvider's ACL resource.
  */
 class CouponCodeProvider implements SearchProviderInterface
 {

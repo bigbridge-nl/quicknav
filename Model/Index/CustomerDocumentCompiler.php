@@ -7,13 +7,9 @@ namespace BigBridge\QuickNav\Model\Index;
 use Magento\Framework\App\ResourceConnection;
 
 /**
- * Reads `customer_grid_flat`, not raw EAV, so compile-time values match what CustomerProvider
- * reads at query time. The cost is a two-hop staleness chain: this data is only as fresh as
- * core's own `customer_grid` indexer keeps that flat table.
- *
- * What table this reads is separate from what mview subscribes to. The subscription is on
- * `customer_entity` because core's customer_grid indexer periodically DROPs and re-CREATEs
- * `customer_grid_flat`, which would silently destroy a trigger placed on it.
+ * Reads `customer_grid_flat`, not raw EAV, matching CustomerProvider's own source. mview
+ * subscribes to `customer_entity` instead, since core's `customer_grid` indexer periodically
+ * DROPs and re-CREATEs the flat table, which would destroy a trigger placed on it directly.
  */
 class CustomerDocumentCompiler implements EntityDocumentCompilerInterface
 {

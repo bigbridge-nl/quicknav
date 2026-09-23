@@ -38,15 +38,14 @@ configuration field shows its section and group; an order shows the customer nam
 
 ## Type filters
 
-The row of chips below the search box narrows results to one or more specific types — click
-**Product**, then **Category**, to see only products and categories, regardless of what you've
-typed. Only chips for types your admin role can actually access at least one result of are shown,
-so the row is never cluttered with permissions you don't have.
+A row of chips can narrow results to one or more specific types — click **Product**, then
+**Category**, to see only products and categories, regardless of what you've typed. Only chips
+for types your admin role can actually access at least one result of are shown, so the row is
+never cluttered with permissions you don't have.
 
-If you'd rather not see the chip row at all, click the funnel icon inside the search box (next to
-the input, on the right) to hide it — it collapses without adding or removing a row, and your
-choice is remembered the next time you open QuickNav. Click the icon again (now showing an
-eye-off) to bring the chips back.
+The row is collapsed by default to save space; click the funnel icon inside the search box (next
+to the input, on the right) to show it. Click the icon again (now showing an eye-off) to collapse
+it back. Your choice is remembered the next time you open QuickNav.
 
 ![Filter row hidden via the toggle icon](screenshots/02-filters-hidden.png)
 
@@ -193,8 +192,8 @@ Index**, in two groups:
     OpenSearch/Elasticsearch**, which reads the host and port straight from **Stores >
     Configuration > Catalog > Catalog Search > OpenSearch** and hides Host/Port/Scheme, leaving
     only the index prefix.
-  - **Host**, **Port**, **Scheme** — only shown with Connection set to Custom. Defaults:
-    `127.0.0.1`, `9200`, `http`.
+  - **Host**, **Port**, **Scheme** — only shown with Connection set to Custom. Defaults match
+    Magento's own OpenSearch provider: `localhost`, `9200`, `http`.
   - **Index Name Prefix** — always shown when narrowing is enabled, regardless of which
     connection mode is chosen; QuickNav always writes to its own index, only named by this
     prefix. Default: `bigbridge_quicknav`.

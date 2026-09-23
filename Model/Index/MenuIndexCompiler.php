@@ -29,10 +29,9 @@ class MenuIndexCompiler
     public const CONFIG_EDIT_ADMIN_PATH = 'adminhtml/system_config/edit';
 
     /**
-     * Some system.xml sections (e.g. Magento_GraphQl's `web_api`) declare no `resource`, and the
-     * `tab` element has no `resource` attribute in system.xsd to inherit from. Core treats a
-     * resource-less section as deny-to-all, so every record gets this root resource rather than a
-     * null one that no ACL filter could evaluate.
+     * Some system.xml sections (e.g. Magento_GraphQl's `web_api`) declare no `resource`, which
+     * core treats as deny-to-all. Every such record gets this root resource instead of a null one
+     * that no ACL filter could evaluate.
      */
     private const FALLBACK_ACL_RESOURCE = 'Magento_Backend::admin';
 

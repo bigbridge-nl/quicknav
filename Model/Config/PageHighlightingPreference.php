@@ -8,10 +8,9 @@ use Magento\Backend\Model\Auth\Session as AdminSession;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 
 /**
- * Resolves the effective page-highlighting behaviour: the admin-configured default from
- * quicknav_search/general/page_highlighting, overridden per admin user via their own Account
- * Information page. Both the form field and the Alpine flag read this one class, so it is the
- * only place that knows the admin_user `extra` key and its tri-state encoding.
+ * Resolves the effective page-highlighting behaviour: the admin-configured default, overridden
+ * per admin on their own Account Information page. Both the form field and the Alpine flag read
+ * this one class, so it is the only place that knows the admin_user `extra` key's encoding.
  */
 class PageHighlightingPreference
 {

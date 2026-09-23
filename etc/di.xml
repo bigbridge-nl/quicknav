@@ -276,4 +276,16 @@
             <argument name="entityType" xsi:type="string">coupon_code</argument>
         </arguments>
     </virtualType>
+    <!--
+        Plain Structure\Data tracks its "already loaded" state via the shared, process-wide
+        Framework\Config\Scope (default "primary" in CLI/cron, unaffected by our own
+        emulateAreaCode call) — whichever area resolved it FIRST in a process wins for the rest of
+        that process, and clearing the persistent cache backend cannot undo that. This Magento core
+        virtualType (app/etc/di.xml) is a dedicated instance hardcoded to the "adminhtml" scope.
+    -->
+    <type name="BigBridge\QuickNav\Model\Index\MenuIndexCompiler">
+        <arguments>
+            <argument name="structureData" xsi:type="object">adminhtmlConfigStructureData</argument>
+        </arguments>
+    </type>
 </config>

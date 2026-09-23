@@ -5,21 +5,18 @@ declare(strict_types=1);
 namespace BigBridge\QuickNav\Model\Search\OpenSearch;
 
 use OpenSearch\Client;
-use OpenSearch\ClientBuilder;
+use OpenSearch\GuzzleClientFactory;
 
 /**
- * Builds the client straight from opensearch-php against QuickNav's own config — never through
+ * Builds the client straight from opensearch-php against {@see OpenSearchConfig} — never through
  * Magento's own connection-building service classes, which assume the storefront's catalog
- * search. The host and port themselves default to that same platform connection when QuickNav's
- * own is left blank (see {@see OpenSearchConfig}); the client built here is still QuickNav's own.
- *
- * Never throws: returns null when disabled or unbuildable, so callers have one unavailable state.
+ * search. Never throws: returns null when disabled or unbuildable, one unavailable state.
  */
 class OpenSearchClientFactory
 {
-    private const CONNECT_TIMEOUT_MS = 300;
+    private const CONNECT_TIMEOUT_SECONDS = 0.3;
 
-    private const REQUEST_TIMEOUT_MS = 800;
+    private const REQUEST_TIMEOUT_SECONDS = 0.8;
 
     public function __construct(private readonly OpenSearchConfig $config) {}
 
@@ -30,22 +27,16 @@ class OpenSearchClientFactory
         }
 
         try {
-            return ClientBuilder::create()
-                ->setHosts([sprintf(
+            return (new GuzzleClientFactory)->create([
+                'base_uri' => sprintf(
                     '%s://%s:%d',
                     $this->config->getScheme(),
                     $this->config->getHost(),
                     $this->config->getPort()
-                )])
-                ->setConnectionParams([
-                    'client' => [
-                        'curl' => [
-                            CURLOPT_CONNECTTIMEOUT_MS => self::CONNECT_TIMEOUT_MS,
-                            CURLOPT_TIMEOUT_MS => self::REQUEST_TIMEOUT_MS,
-                        ],
-                    ],
-                ])
-                ->build();
+                ),
+                'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+                'timeout' => self::REQUEST_TIMEOUT_SECONDS,
+            ]);
         } catch (\Throwable $e) {
             return null;
         }

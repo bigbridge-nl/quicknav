@@ -7,12 +7,9 @@ namespace BigBridge\QuickNav\Model\Search\OpenSearch;
 use Psr\Log\LoggerInterface;
 
 /**
- * The null-versus-empty-array distinction is load-bearing, and `$candidateIds ?? []` in a caller
- * is always a bug:
- *
- *   null → no usable answer (disabled, unreachable, query too short to produce n-grams, or the
- *          search threw). The caller must run its original, unnarrowed LIKE query.
- *   []   → OpenSearch answered and matched nothing. The caller can skip the DB entirely.
+ * The null-versus-empty-array distinction is load-bearing: null means no usable answer (run the
+ * original unnarrowed LIKE query), [] means OpenSearch matched nothing (skip the DB). A caller
+ * writing `$candidateIds ?? []` is always a bug.
  */
 class CandidateIdNarrower
 {

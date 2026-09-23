@@ -41,24 +41,16 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Checks search coverage against this install's real data, catching the failure mode unit tests
- * cannot: an index that reports "Ready" while a record type is silently missing from it.
- *
- * Runs each provider's real search() against the database, but with an always-allow
- * AuthorizationInterface, since a CLI process has no logged-in admin for the real one to accept.
- * ACL enforcement is covered by the provider unit tests; this only asks whether a record is
- * findable at all.
+ * Checks search coverage against this install's real data, catching an index that reports
+ * "Ready" while a record type is silently missing. Runs each provider's real search() with an
+ * always-allow AuthorizationInterface, since a CLI process has no logged-in admin.
  */
 class DiagnoseSearchCommand extends Command
 {
     /**
-     * One case per provider key, using labels that exist in this install's sample data. A failing
-     * config_group or config_section case points at a stale index; a failing product, customer or
-     * order case usually means the sample data changed.
-     *
-     * `requiresRowsIn` names a table whose rows only exist in some sample data sets. Without it a
-     * case cannot tell "the provider is broken" apart from "this install never had that data" —
-     * search terms, for instance, ship with Mage-OS sample data but not with Adobe's.
+     * One case per provider key, using labels from this install's sample data. `requiresRowsIn`
+     * names a table whose rows only exist in some sample data sets — without it, a failing case
+     * can't distinguish "provider is broken" from "this install never had that data".
      *
      * @var array<int, array{query: string, expectLabel: string, description: string, requiresRowsIn?: string}>
      */
@@ -454,10 +446,9 @@ class DiagnoseSearchCommand extends Command
     }
 
     /**
-     * Duplicate result ids break the widget's `x-for :key`, which crashes Alpine and renders an
-     * empty result list with no error anywhere — so this fails silently in the browser rather
-     * than loudly. "countr" is chosen because it hits at least 8 groups of config fields sharing
-     * a URL through plain matching, with no fuzzy-match internals involved.
+     * Duplicate result ids crash Alpine's `x-for :key` silently, with no error anywhere. "countr"
+     * hits at least 8 groups of config fields sharing a URL through plain matching, with no
+     * fuzzy-match internals involved.
      */
     private function checkNoDuplicateResultIds(SearchService $searchService, OutputInterface $output): bool
     {

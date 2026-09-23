@@ -97,10 +97,9 @@ class AccessibleTypeResolver
     }
 
     /**
-     * These rows carry their own `acl_resource`, so a record type counts as accessible when the
-     * role is allowed at least one row, not every row. Selecting distinct
-     * (record_type, acl_resource) pairs keeps this a handful of `isAllowed()` calls regardless
-     * of table size.
+     * A record type counts as accessible when the role is allowed at least one of its rows, not
+     * every row. Selecting distinct (record_type, acl_resource) pairs keeps this a handful of
+     * `isAllowed()` calls regardless of table size.
      *
      * @return string[]
      */
