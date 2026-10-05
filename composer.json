@@ -3,7 +3,7 @@
     "description": "BigBridge QuickNav: fast, ACL-aware admin search and navigation to products, categories, configuration, customers, orders, CMS and more from the admin dashboard.",
     "type": "magento2-module",
     "license": [
-        "GPL-3.0-or-later"
+        "MIT"
     ],
     "require": {
         "php": "~8.1.0||~8.2.0||~8.3.0||~8.4.0||~8.5.0",
@@ -32,5 +32,5 @@
             "magento/composer-dependency-version-audit-plugin": true
         }
     },
-    "version": "1.0.3"
+    "version": "1.0.4"
 }

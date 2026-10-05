@@ -76,7 +76,7 @@ highlight matching visible page elements live, without opening QuickNav at all. 
 
 ## License
 
-Licensed under [GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html).
+Licensed under the [MIT License](LICENSE.txt).
 
 ## About BigBridge
 
